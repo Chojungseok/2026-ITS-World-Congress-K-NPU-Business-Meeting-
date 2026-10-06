@@ -1,91 +1,87 @@
-# Google Apps Script / Sheets 후속 연결 설계
+# 기존 API 계약을 유지한 GAS 전환
 
-이 문서는 다음 단계의 구현 계약입니다. 현재 연결된 Google 계정·시트·웹 앱은 없습니다. 운영 코드가 완성되었다는 의미가 아닙니다.
+## 분석 결과와 유지한 설계
 
-## 경계와 어댑터
+전환 전 api.js는 mock-api.js의 api를 그대로 export했습니다. app.js는 api만 호출하고 views.js가 기존 반응형 화면을 출력했습니다. mock-api.js는 localStorage의 requests/history/slotCapacities를 원본으로 쓰고 메모리 토큰으로 데모 인증을 처리했습니다.
 
-UI는 `assets/js/api.js`를 통해 비동기 API를 사용합니다. `mock-api.js`는 브라우저 데모 전용입니다. 후속 작업에서는 `gas-api.js`를 추가하고 이 진입점을 교체합니다. 화면별 인증 전환도 함께 구현해야 하며, URL만 추가해서 운영 서비스가 되지는 않습니다.
+이번 변경은 이 경계를 유지합니다. api.js가 runtime-config.js에 따라 mock-api 또는 gas-api 중 하나만 동적으로 로드합니다. 운영 어댑터 오류 시 mock으로 전환하지 않습니다. CSS, HTML, 화면 배치, 기존 해시 라우팅을 재작성하지 않았습니다.
 
-기업·정원·운영시간은 운영 시 서버의 `getConfig` 응답을 권위 있는 값으로 사용해야 합니다. 현재 기업 정원은 모의 API의 저장 설정을 화면에 반영합니다. 기업명·시간표의 기본값은 `config.js`를 사용하므로, GAS 연결 시 이 값도 서버 설정으로 교체합니다.
-
-## Sheets 매핑
-
-| 상담신청 열 | 프론트엔드 필드 |
+| 기존 부분 | 변경 |
 | --- | --- |
-| 신청ID | id |
-| 신청일시 | createdAt |
-| ITS기업명 | itsCompany |
-| 담당자 | contactName |
-| 연락처 | phone |
-| 이메일 | email |
-| NPU기업 | providerId를 서버에서 기업명으로 변환 |
-| 희망시간 | time |
-| 참석인원 | attendees |
-| 상담내용 | details |
-| 상태 | status |
-
-`NPU정보`: NPU기업명 / 동시상담가능수 / 담당자 / 승인코드.
-`시간설정`: 시간 / 운영여부.
-
-시트는 공개 공유하지 않습니다. 승인코드는 서버에서만 읽고 검증하며 목록 응답·로그에 포함하지 않습니다. 평문 승인코드 대신 서버에서 검증 가능한 해시 저장 방식을 검토합니다. Sheets 접근 권한과 Script Properties는 GAS에만 둡니다. 데이터의 날짜·시간 해석 기준은 Asia/Seoul로 통일합니다.
+| api.js | 유일한 데이터 진입점 유지, 환경에 따라 구현 선택 |
+| mock-api.js | 보존. 기존 ID-only 테스트 계약 유지, 이메일이 주어지면 검증 추가 |
+| gas-api.js | 동일한 메서드/반환 형태에 HTTP 전송·오류 처리 추가 |
+| config.js | 기존 로컬 기본값 보존, 운영에서는 서버 기업·시간·정원·동의 버전 반영 |
+| app.js | 이메일 조회, 세션 복원, 운영 설정, 15초 갱신, 만료 재로그인 |
+| views.js | 조회 이메일 필드, 실제 저장 방식/동의문, 운영/로컬 문구 구별, NPU 로그아웃 |
+| session-store.js | 토큰만 sessionStorage 저장, 만료된 값 제거 |
+| Apps Script | 중앙 원본 DB, 권한·입력·정원 검증, 원자적 감사 기록 |
 
 ## API 계약
 
-| 메서드 / 동작 | 권한 | 내용 |
-| --- | --- | --- |
-| getConfig | 공개 | 공개 기업 정보, 운영 중 시간만 반환; 승인코드 제외 |
-| getAvailability | 공개 | 기업·시간별 확정 건수와 정원만 반환; 신청자 정보 제외 |
-| submitRequest | 공개 신청 | 필수 항목 검증, 승인대기로 저장, 예측 불가능한 신청ID 발급 |
-| authenticateProvider | 승인코드 검증 | 기업·코드를 서버에서 검증, 짧은 수명의 토큰 발급 |
-| getProviderRequests | NPU 세션 | 토큰에 귀속된 기업의 신청만 반환 |
-| decideRequest | NPU 세션 | 본인 기업의 대기 신청만 승인·거절 |
-| authenticateAdmin | 관리자 인증 | 별도 관리자 인증 후 역할 있는 세션 발급 |
-| getAdminRequests / getAdminOverview | 관리자 세션 | 전체 신청·처리 이력·기업 정원을 한 시점의 상태로 조회; NPU 세션 접근 금지 |
-| updateProviderCapacity({ token, time, capacity }) | NPU 세션 | 본인 기업의 특정 시간대 정원 변경; 해당 시간의 확정 건수 미만 축소 방지 및 감사 기록 |
-| verifyApplicant (추가) | 신청자 확인 | 메일로 보낸 일회용 링크/코드 등을 통한 신청 소유 확인 |
-| findRequest / cancelRequest | 신청자 세션 | 본인 신청만 조회·취소 |
-| logout | 인증 세션 | 서버 토큰 무효화 |
+자바스크립트 호출 형태는 다음과 같습니다. 어댑터는 응답 봉투의 data만 반환하여 기존 UI 계약을 유지하고 실패 시 code가 있는 Error를 throw합니다.
 
-`authenticateProvider({ providerId, approvalCode })`는 현재 로컬 테스트 코드를 비교하고 메모리 세션 토큰을 반환합니다. 운영 연결 시 같은 UI 계약을 유지하되 코드 검증과 세션 발급을 GAS 서버로 옮기고 공개된 로컬 코드는 새 운영 코드로 교체합니다. `authenticateAdmin({ id, password })`도 로컬 확인용이며 운영 시 서버 인증으로 교체합니다. `resetDemo`는 운영 환경에서 제거합니다. 현재 신청ID 단독 조회는 데모 편의 기능입니다. 운영 시 실제 소유 확인을 추가해야 합니다. 신청 소유 토큰·만료·감사 이력을 보관하려면 기존 3개 시트 외에 별도 인증/감사 저장 영역 또는 추가 필드가 필요합니다.
+| 메서드 | 입력 | 반환 | 접근/HTTP |
+| --- | --- | --- | --- |
+| getConfig | 없음 | {providers,times,privacy} | 공개 GET |
+| getAvailability | providerId 문자열 | [{time,confirmed,capacity,active}] | 공개 GET |
+| submitRequest | 신청 필드 객체 + privacyConsent + privacyNoticeVersion | 신청 객체 | 공개 POST |
+| findRequest | {id,email} | 해당 신청 객체 | 본인정보 확인 POST |
+| cancelRequest | {id,email} | 취소된 신청 객체 | 본인정보 확인 POST |
+| authenticateProvider | {providerId,approvalCode} | token 문자열 | 기업 인증 POST |
+| authenticateAdmin | {id,password} | token 문자열 | 관리자 인증 POST |
+| logout | token 문자열 | null | 유효 세션 POST |
+| getProviderRequests | token 문자열 | 본인 기업 신청 배열 | NPU POST |
+| decideRequest | {token,id,decision} | 변경된 신청 객체 | NPU POST |
+| updateProviderCapacity | {token,time,capacity} | {providerId,time,capacity} | NPU POST |
+| getAdminRequests | token 문자열 | 전체 신청 배열 | 관리자 POST |
+| getAdminOverview | token 문자열 | {requests,history,providers} | 관리자 POST |
 
-응답 예시는 `{ ok: true, data: ... }`, 오류는 `{ ok: false, error: { code, message } }`로 통일합니다. 실제 반환 스키마는 연결 단계에서 확정합니다. 중복 전송에 대비해 요청별 idempotency key와 서버 중복 검증을 설계합니다.
+decision은 매칭확정 또는 매칭거절입니다. status는 승인대기/매칭확정/매칭거절/신청취소입니다. resetDemo는 운영 구현과 서버에 없습니다.
 
-## 승인 정원 검증
+HTTP 본문은 메서드 인자와 action을 같은 객체에 둡니다. 예: `{action:'getProviderRequests',token:...}`. getConfig/getAvailability 외 GET 호출은 거부합니다. 서버에는 client가 지정한 함수명을 실행하는 경로가 없습니다.
 
-NPU 정원 초기값: 딥엑스 5 / 모빌린트 2 / 퓨리오사 1 / 리벨리온 2. 로컬 정원 변경 범위는 0~50건이며 NPU 기업 × 시간대별로 독립 적용합니다. 서버에서도 현재 설정을 읽고, 정원 변경·승인·취소를 같은 잠금으로 보호해야 합니다.
+신청 객체는 기존 id/createdAt/itsCompany/contactName/phone/email/providerId/time/attendees/details/status/privacyConsent/privacyConsentedAt/privacyNoticeVersion을 유지하고 providerName/updatedAt을 추가합니다. 시트 내부 행 번호는 반환하지 않습니다.
 
-서버에서 인증을 검증한 뒤 다음 전체 작업을 하나의 공통 `LockService.getScriptLock()` 임계 구역에서 수행합니다.
+기업 설정의 capacities는 시간 → 정원, enabled는 시간 → 운영여부입니다. 활성여부는 active로 전달합니다. 기업 마크/색상 등 화면 장식만 프론트엔드 기본값을 사용합니다. 잔여 자리는 공개된 집계와 정원으로 계산하고 개인정보는 포함하지 않습니다.
 
-1. 잠금 획득 실패 시 재시도 가능한 오류를 반환합니다.
-2. 신청을 다시 조회하고 신청 상태가 승인대기인지 확인합니다.
-3. 세션 기업과 신청의 NPU 기업이 같은지 확인합니다.
-4. 기업 정원, 운영 중인 시간, 동일 기업·시간의 현재 매칭확정 건수를 읽습니다.
-5. 승인 요청이면 확정 건수가 정원보다 작은 경우에만 매칭확정으로 변경합니다.
-6. 거절 요청이면 매칭거절로 변경합니다.
-7. 저장을 완료하고 변경을 반영한 뒤 finally에서 잠금을 해제합니다.
+history는 기존 action/occurredAt/actor/requestId/itsCompany/providerId/time/fromStatus/toStatus/beforeCapacity/afterCapacity를 보존하고 actorRole을 추가합니다. 최신 시각순, 동일 시각은 기록 순서 역순입니다.
 
-정원 변경·신규 신청·취소 등 정원 판단과 경쟁하는 모든 쓰기도 같은 잠금 체계를 사용합니다. 정원 축소 시 기존 확정 상담을 임의 취소하지 않고, 변경 대상 시간대의 확정 건수보다 낮은 설정은 거부합니다. 승인 직전 다시 집계하며 클라이언트가 전송한 상태·정원·기업 권한을 신뢰하지 않습니다. 확정 건 취소 후 반환된 정원은 다음 승인에서 이용할 수 있습니다.
+## 인증·개인정보 경계
 
-## 연결 시 확인할 항목
+- 익명 전체 목록·임의 신청 상세 API는 없습니다.
+- 신청자 조회/취소는 ID와 이메일의 동시 일치가 필요합니다. 잘못된 이메일과 존재하지 않는 ID는 같은 오류로 응답합니다.
+- 이는 요청된 최소 본인확인입니다. 이메일 소유권 OTP 인증은 포함하지 않습니다. UUID 신청ID와 이메일을 함께 안전하게 관리해야 합니다.
+- NPU 권한은 HMAC 서명과 서버 활성 세션을 확인한 token의 providerId만 사용합니다. input.providerId를 바꿔도 소유 범위를 바꿀 수 없습니다.
+- 관리자와 기업 role을 구분합니다. NPU 토큰으로 관리자 API를 실행할 수 없습니다.
+- 토큰은 30분 만료, jti별 Script Properties 등록/폐기, sessionStorage 저장입니다. 로그아웃/인증정보 재설정 시 서버에서 폐기합니다.
+- 실제 승인코드/비밀번호는 Script Properties에서 등록하고 configureAuthentication으로 키드 해시화합니다. 공개된 데모 값은 등록/인증에 사용하지 않습니다.
+- 동의시각·신청ID·상태·수정시각은 서버에서 생성합니다. 동의문 버전이 현재 안내와 다르면 거부합니다.
+- 보유기간은 PRIVACY_RETENTION_TEXT로 분리했습니다. 운영기관 확정 전에는 미확정 안내이며 실제 기간을 임의로 정하지 않았습니다.
+- Sheet/프로젝트는 비공개 공유가 전제입니다. 실제 소유자가 공유 권한을 확인해야 합니다.
 
-- GitHub Pages 실제 origin에서 GAS 웹 앱의 리다이렉트, CORS, POST 응답 처리를 검증합니다. `no-cors`는 읽을 수 없는 응답을 만들므로 성공 판정 수단으로 사용하지 않습니다.
-- 인증코드와 토큰을 URL 쿼리·공개 소스·로그에 저장하지 않습니다. 잘못된 코드 반복 입력 제한과 토큰 만료를 둡니다.
-- 임의 업체 ID를 보내도 다른 기업의 신청을 읽거나 변경할 수 없는지 확인합니다.
-- 승인·취소 경합과 마지막 자리 동시 승인, 중복 제출을 서버 통합 테스트로 확인합니다.
-- 운영시간 비활성화 정책, 신청 마감, 확정 후 취소 가능 시점, 인원 범위를 확정합니다.
-- Sheets에 기록할 사용자 입력은 수식으로 해석되지 않도록 텍스트 처리합니다.
-- 개인정보 수집 목적·보유 기간·파기·관리자 접근 범위를 정하고 실제 동의 문구로 교체합니다.
-- 네트워크 실패 후 새로 조회하여 처리 결과를 확인할 수 있도록 합니다.
-- 실제 행사 운영에 앞서 데모 표시·초기화 버튼·고정 예시 데이터·모의 인증 우회 경로를 제거합니다.
+## 상태 전이와 데이터 일관성
 
-## 개인정보 동의 이력
+신청: 신규 → 승인대기. 승인대기 → 매칭확정 또는 매칭거절. 승인대기/매칭확정 → 신청취소.
 
-신규 로컬 신청은 privacyConsent, privacyConsentedAt, privacyNoticeVersion을 함께 저장합니다. GAS 연동 단계에서는 동의 여부·동의 시각·동의문 버전 열 또는 별도 동의 이력 저장소를 추가하고, 서버에서도 필수 동의를 검증합니다. 운영 시 보유기간과 실제 안내문을 확정해야 합니다.
+중복 활성 신청은 정규화한 이메일 + ITS기업 + NPU + 시간으로 검사합니다. 승인대기는 자리를 예약하지 않습니다. 승인 직전에 확정 건수를 다시 읽습니다. 확정 취소 후 다음 집계부터 자리가 반환됩니다.
 
-## 처리 이력
+모든 서버 진입 경로는 공통 ScriptLock 아래에서 검증합니다. 수정과 처리이력은 고급 Sheets API batchUpdate 한 번으로 저장합니다. 마지막 자리 두 건 승인, 취소/승인, 정원 축소/승인이 임계 구역 밖에서 서로 경쟁하지 않습니다. 이미 처리된 동일 승인/거절/취소의 재시도는 중복 이력을 만들지 않습니다. 단 신규 신청 응답 유실 후 재시도는 DUPLICATE로 차단되므로 ID를 받지 못했다면 관리자에게 접수 확인을 요청해야 합니다.
 
-로컬 저장소에는 history 배열을 추가했습니다. action, occurredAt, actor, requestId, itsCompany, providerId, time, fromStatus, toStatus를 보존하며 정원 변경은 time과 beforeCapacity/afterCapacity를 기록합니다. 이전 기업 단위 변경의 time은 없을 수 있으며 이를 모든 시간대에 대한 이전 설정으로 표시합니다. 운영 시 별도 감사 시트에 서버 시간과 인증된 처리자를 기록하고 상태 변경과 함께 원자적으로 저장해야 합니다. 기존 데이터의 미기록 시각은 null로 두고 기존 상태로 구분합니다. 관리자 API는 기록된 시각 내림차순으로 정렬하며 동시각은 기록 순서로 구분하고 미기록 상태는 끝에 둡니다.
+정원은 기업 × 시간별 0~50 정수입니다. 기존 확정 수 미만으로 줄일 수 없습니다. 정원 0 또는 운영여부 FALSE이면 신규 신청/승인을 받지 않습니다. 취소와 거절은 계속 가능합니다.
 
-## 시간대별 정원
+사용자 문자열은 Sheets API stringValue로 지정합니다. =, +, -, @, 선행 공백이 있어도 formulaValue로 기록하지 않습니다. 시트 직접 편집은 서버 잠금을 우회하므로 운영 중 상태/정원을 직접 수정하지 않습니다.
 
-로컬 slotCapacities는 기업 ID → 시간 문자열 → 정원으로 저장합니다. 기존 capacities 값은 이관용 기본값으로 보존하고 새로운 변경에는 사용하지 않습니다. GAS에는 NPU기업 / 시간 / 동시상담가능수 형태의 시간별정원 시트 또는 동등한 저장 구조를 추가합니다. getConfig의 기업별 capacities와 getAvailability 응답, 신청·승인 검증은 모두 같은 시간별 설정을 사용해야 합니다.
+## 전송과 갱신
+
+GET에는 action/providerId만 둡니다. POST는 text/plain;charset=utf-8 JSON, credentials omit, mode cors, redirect follow입니다. no-cors/JSONP를 사용하지 않습니다. JSON 응답이나 네트워크 확인 없이 성공 처리하지 않습니다. 쓰기 자동 재시도는 없습니다.
+
+자동 갱신 기본값은 15초입니다. ITS의 시간 선택은 값 변경을 반영하고, NPU/관리자는 미저장 편집과 입력 포커스를 보호합니다. 수동 새로고침과 화면 복귀도 서버 데이터를 읽습니다. 이 구조는 push 실시간 연결이 아니라 주기 조회입니다.
+
+## 검증 범위
+
+`npm test`는 기존 mock 테스트와 실제 .gs 소스를 Node VM에서 실행하는 서버 테스트, 어댑터 전송/세션 테스트를 실행합니다. Google 서비스 모형의 잠금과 batch API가 실제 서버 코드를 검증합니다.
+
+`tests/browser-gas-smoke.mjs`는 선택적 Playwright 검사입니다. 실제 프론트엔드를 분리된 브라우저 컨텍스트에서 실행하고 GAS 요청만 서비스 모형에 연결합니다. npm start로 서버를 실행하고 Playwright가 있는 환경에서 실행합니다. PLAYWRIGHT_MODULE, BROWSER_CHANNEL, PREVIEW_URL 환경변수를 선택적으로 사용할 수 있습니다.
+
+로컬 테스트는 실제 Google 서버의 배포 권한, CORS, API 할당량을 검증하지 않습니다. [설정·실기기 검증 안내](../apps-script/README.md)를 따라 사용자 계정에서 완료해야 합니다.

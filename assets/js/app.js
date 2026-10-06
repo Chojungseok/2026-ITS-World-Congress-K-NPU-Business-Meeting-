@@ -1,15 +1,19 @@
 import { api } from './api.js';
-import { STATUS, STORAGE_KEY, providerById } from './config.js';
+import { STATUS, STORAGE_KEY, providerById, applyPublicConfig, PRIVACY_NOTICE } from './config.js';
 import * as view from './views.js';
+import { RUNTIME_CONFIG } from './runtime-config.js';
+import { readSession, saveSession, clearSession } from './session-store.js';
+view.setViewContext({ demo: api.mode === 'mock' });
 const $ = (selector, root = document) => root.querySelector(selector);
 const app = $('#app');
 app.innerHTML = view.shell();
 const main = $('#main');
 const dialog = $('#result-dialog');
 let route = '';
-let providerToken = null;
-let activeProvider = '';
-let adminToken = null;
+const restoredProvider = api.mode === 'gas' ? readSession('provider') : null;
+let providerToken = restoredProvider?.token || null;
+let activeProvider = restoredProvider?.providerId || '';
+let adminToken = api.mode === 'gas' ? readSession('admin')?.token || null : null;
 let providerFilter = '';
 let currentRows = [];
 let currentHistory = [];
@@ -76,14 +80,14 @@ async function loadTimes() {
   if (!form) return;
   const version = ++availabilityVersion;
   const data = new FormData(form);
-  const selected = data.get('time');
-  const [slots, config] = await Promise.all([api.getAvailability(data.get('providerId')), api.getConfig()]);
+    const [slots, config] = await Promise.all([api.getAvailability(data.get('providerId')), api.getConfig()]);
   if (version !== availabilityVersion || !form.isConnected) return;
+  if (api.mode === 'gas' && config.privacy.version !== PRIVACY_NOTICE.version) throw new Error('개인정보 안내가 변경되었습니다. 새로고침 후 다시 확인해 주세요.');
   for (const provider of config.providers) {
     const label = $('[data-capacity-provider="' + provider.id + '"]', form);
     if (label) label.textContent = view.capacityRange(provider);
   }
-  $('#time-options').innerHTML = view.timeOptions(slots, selected);
+  $('#time-options').innerHTML = view.timeOptions(slots, new FormData(form).get('time'));
   summary();
 }
 function bindApply() {
@@ -105,12 +109,13 @@ function bindApply() {
     const values = Object.fromEntries(new FormData(form));
     values.consent = form.elements.consent.checked;
     values.privacyConsent = form.elements.privacyConsent.checked;
+    values.privacyNoticeVersion = PRIVACY_NOTICE.version;
     busy($('button[type="submit"]', form), async () => {
       const record = await api.submitRequest(values);
       form.reset();
-      await loadTimes();
+      loadTimes().catch(error => toast(error.message, true));
       const escapedId = view.escapeHtml(record.id);
-      showDialog('<span class="dialog-symbol success">' + view.icon('check') + '</span><span class="eyebrow gray">REQUEST RECEIVED</span><h2 id="dialog-title">상담 신청이 접수되었습니다</h2><p class="dialog-description">NPU 기업의 검토 후 매칭이 확정됩니다.<br>아래 신청ID를 꼭 보관해 주세요.</p><div class="success-summary">' + view.badge(record.status) + '<strong>' + providerById(record.providerId).name + ' · ' + view.escapeHtml(record.time) + '</strong></div><label class="field">신청ID<input readonly id="new-request-id" value="' + escapedId + '"></label><p class="muted">신청ID로 신청 상태를 조회할 수 있습니다. 신청ID를 안전하게 보관해 주세요.<br>데모에서는 확인 이메일이 발송되지 않습니다.</p><div class="dialog-actions"><button class="button secondary" id="copy-id">' + view.icon('copy') + ' ID 복사</button><button class="button primary" id="go-lookup">신청 확인하기 ' + view.icon('arrow') + '</button></div>');
+      showDialog('<span class="dialog-symbol success">' + view.icon('check') + '</span><span class="eyebrow gray">REQUEST RECEIVED</span><h2 id="dialog-title">상담 신청이 접수되었습니다</h2><p class="dialog-description">NPU 기업의 검토 후 매칭이 확정됩니다.<br>아래 신청ID를 꼭 보관해 주세요.</p><div class="success-summary">' + view.badge(record.status) + '<strong>' + view.escapeHtml(providerById(record.providerId).name) + ' · ' + view.escapeHtml(record.time) + '</strong></div><label class="field">신청ID<input readonly id="new-request-id" value="' + escapedId + '"></label><p class="muted">신청ID와 신청 이메일로 신청 상태를 조회할 수 있습니다. 신청ID를 안전하게 보관해 주세요.<br>자동 확인 이메일은 발송되지 않습니다.</p><div class="dialog-actions"><button class="button secondary" id="copy-id">' + view.icon('copy') + ' ID 복사</button><button class="button primary" id="go-lookup">신청 확인하기 ' + view.icon('arrow') + '</button></div>');
       $('#copy-id').onclick = async () => {
         try { await navigator.clipboard.writeText(record.id); toast('신청ID를 복사했습니다.'); }
         catch { $('#new-request-id').select(); toast('선택된 신청ID를 직접 복사해 주세요.'); }
@@ -128,10 +133,12 @@ function bindLookup() {
   const form = $('#lookup-form');
   if (lookupRow) {
     form.elements.id.value = lookupRow.id;
+    form.elements.email.value = lookupRow.email;
     showLookup(lookupRow);
   }
-  $('#fill-example').onclick = () => {
+  if (api.mode === 'mock') $('#fill-example').onclick = () => {
     form.elements.id.value = 'DEMO-0001';
+    form.elements.email.value = 'demo1@example.com';
     form.elements.id.focus();
   };
   form.addEventListener('submit', event => {
@@ -144,7 +151,7 @@ function bindLookup() {
         lookupRow = row;
         showLookup(row);
       } catch (error) {
-        $('#lookup-result').innerHTML = view.empty('신청 정보를 확인해 주세요', '입력한 신청ID에 해당하는 신청을 찾지 못했습니다.');
+        $('#lookup-result').innerHTML = view.empty('신청 정보를 확인해 주세요', '신청ID와 신청 이메일을 확인해 주세요.');
         throw error;
       }
     }, '#lookup-error');
@@ -176,6 +183,7 @@ function bindProviderLogin() {
       });
       activeProvider = providerId;
       providerToken = token;
+      if (api.mode === 'gas') saveSession('provider', token);
       form.elements.approvalCode.value = '';
       providerFilter = '';
       await renderRoute(false);
@@ -222,6 +230,7 @@ function bindAdminLogin() {
     const form = event.currentTarget;
     busy($('button[type="submit"]', form), async () => {
       adminToken = await api.authenticateAdmin({ id: form.elements.id.value, password: form.elements.password.value });
+      if (api.mode === 'gas') saveSession('admin', adminToken);
       form.elements.password.value = '';
       await renderRoute(false);
     }, '#admin-login-error');
@@ -246,7 +255,8 @@ function filterHistory() {
 function bindAdmin(savedHistoryFilters) {
   $('#refresh-admin').onclick = () => refresh().catch(error => toast(error.message, true));
   $('#admin-logout').onclick = async () => {
-    await api.logout(adminToken);
+    try { await api.logout(adminToken); } catch (error) { toast(error.message, true); }
+    clearSession('admin');
     adminToken = null;
     currentRows = [];
     currentHistory = [];
@@ -319,6 +329,7 @@ async function renderRoute(focus = true) {
   $('#sidebar [data-route="npu"]').hidden = itsScreen || route === 'admin';
   $('#sidebar [data-route="admin"]').hidden = itsScreen || providerScreen;
   $('#sidebar [data-route="matching"]').hidden = !providerScreen;
+  $('#provider-logout').hidden = !providerToken || !providerScreen;
   const signedInProvider = providerToken ? providerById(activeProvider) : null;
   document.body.classList.toggle('has-provider-session', !!signedInProvider && route !== 'admin');
   document.body.classList.toggle('has-admin-session', !!adminToken && route === 'admin');
@@ -335,10 +346,14 @@ async function renderRoute(focus = true) {
   $('#menu-toggle').setAttribute('aria-expanded', 'false');
   $('#menu-toggle').setAttribute('aria-label', '메뉴 열기');
   try {
+    if (api.mode === 'gas') {
+      applyPublicConfig(await api.getConfig());
+      if (version !== renderVersion) return;
+    }
     if (route === 'home') { main.innerHTML = view.homePage(); }
     if (route === 'apply') { main.innerHTML = view.applyPage(); bindApply(); await loadTimes(); }
     if (route === 'lookup') {
-      if (lookupRow) lookupRow = await api.findRequest({ id: lookupRow.id });
+      if (lookupRow) lookupRow = await api.findRequest({ id: lookupRow.id, email: lookupRow.email });
       if (version !== renderVersion) return;
       main.innerHTML = view.lookupPage(); bindLookup();
     }
@@ -375,6 +390,13 @@ async function renderRoute(focus = true) {
     }
     if (focus && version === renderVersion) { main.focus({ preventScroll: true }); window.scrollTo({ top: 0 }); }
   } catch (error) {
+    if (version !== renderVersion) return;
+    if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
+      if (route === 'admin') { adminToken = null; clearSession('admin'); }
+      else { providerToken = null; activeProvider = ''; clearSession('provider'); }
+      currentRows = []; currentHistory = []; dialog.close();
+      toast(error.message, true); return renderRoute(false);
+    }
     main.innerHTML = '<section class="panel error-panel"><h1>화면을 불러오지 못했습니다</h1><p role="alert">' + view.escapeHtml(error.message) + '</p><button class="button primary" id="retry-page">다시 시도</button></section>';
     $('#retry-page').onclick = () => renderRoute(false);
   }
@@ -382,7 +404,10 @@ async function renderRoute(focus = true) {
 async function refresh() {
   if (route === 'apply') await loadTimes();
   else if (route === 'lookup' && lookupRow) {
-    lookupRow = await api.findRequest({ id: lookupRow.id });
+    const original = lookupRow;
+    const latest = await api.findRequest({ id: original.id, email: original.email });
+    if (route !== 'lookup' || lookupRow !== original) return;
+    lookupRow = latest;
     showLookup(lookupRow);
   } else if (((route === 'npu' || route === 'matching') && providerToken) || (route === 'admin' && adminToken)) await renderRoute(false);
 }
@@ -391,7 +416,7 @@ $('#menu-toggle').onclick = () => {
   $('#menu-toggle').setAttribute('aria-expanded', String(open));
   $('#menu-toggle').setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
 };
-$('#reset-demo').onclick = () => confirmAction({
+if (api.mode === 'mock') $('#reset-demo').onclick = () => confirmAction({
   title: '데모 데이터를 초기화할까요?',
   description: '이 브라우저에서 입력한 모든 신청과 처리 내역을 지우고 최초 예시 데이터로 되돌립니다.',
   label: '초기화', danger: true,
@@ -407,9 +432,24 @@ $('#reset-demo').onclick = () => confirmAction({
 });
 window.addEventListener('hashchange', () => { dialog.close(); renderRoute(); });
 window.addEventListener('storage', event => {
-  if (event.key === STORAGE_KEY || event.key === null) refresh().catch(error => toast(error.message, true));
+  if (api.mode === 'mock' && (event.key === STORAGE_KEY || event.key === null)) refresh().catch(error => toast(error.message, true));
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refresh().catch(error => toast(error.message, true));
 });
 renderRoute(false);
+
+$('#provider-logout').onclick = async () => {
+  try { await api.logout(providerToken); } catch (error) { toast(error.message, true); }
+  clearSession('provider'); providerToken = null; activeProvider = ''; currentRows = [];
+  dialog.close(); await renderRoute(false);
+};
+let polling = false;
+if (api.mode === 'gas') setInterval(async () => {
+  if (polling || document.visibilityState !== 'visible' || document.querySelector('[aria-busy="true"]')) return;
+  const editing = document.activeElement?.matches('input,select,textarea');
+  const dirty = [...document.querySelectorAll('.slot-capacity-form input[name="capacity"]')].some(input => input.value !== input.defaultValue);
+  if (route !== 'apply' && (editing || dirty || (dialog.open && !activeAdminSlot))) return;
+  polling = true;
+  try { await refresh(); } catch (error) { toast(error.message, true); } finally { polling = false; }
+}, Math.max(5000, RUNTIME_CONFIG.refreshIntervalMs));

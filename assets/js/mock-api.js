@@ -191,7 +191,13 @@ export const api = {
       return record;
     });
   },
-  async findRequest({ id }) { return clone(findById(read().requests, id)); },
+  async findRequest({ id, email }) {
+    const row = findById(read().requests, id);
+    // Preserve ID-only mock tests; the UI always supplies an email now.
+    if (email !== undefined && String(email).trim().toLowerCase() !== row.email.toLowerCase())
+      throw new Error('신청ID와 신청 이메일을 확인해 주세요.');
+    return clone(row);
+  },
   async cancelRequest({ id, email }) {
     return mutate(data => {
       const row = owned(data.requests, id, email);
