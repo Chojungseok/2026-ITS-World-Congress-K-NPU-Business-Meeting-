@@ -8,11 +8,21 @@
   <title>K-NPU Connect · 비즈매칭</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%232457e7'/%3E%3Ctext x='24' y='32' text-anchor='middle' fill='white' font-family='Arial' font-size='30' font-weight='bold'%3EK%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="./assets/css/styles.css">
-  <script type="module" src="./assets/js/app.js"></script>
+  <script defer src="./assets/js/bootstrap.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
-  <div id="app"></div>
+  <div id="app">
+    <section class="startup-panel" aria-live="polite">
+      <span class="eyebrow">K-NPU CONNECT</span>
+      <h1 id="startup-title">화면을 준비하고 있습니다</h1>
+      <p id="startup-message">잠시만 기다려 주세요.</p>
+      <div id="local-file-help" hidden>
+        <p><strong>실행 순서</strong><br>1. 이 폴더의 <code>start-local.cmd</code>를 더블클릭합니다.<br>2. 자동으로 열리는 브라우저에서 확인합니다.<br>3. 사용 중에는 실행 창을 열어 두세요.</p>
+        <a class="button primary" href="http://127.0.0.1:4173/">서버 실행 후 화면 열기</a>
+      </div>
+    </section>
+  </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <dialog id="result-dialog" aria-labelledby="dialog-title"></dialog>
   <noscript>이 프로토타입을 사용하려면 JavaScript를 활성화해 주세요.</noscript>
