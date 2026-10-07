@@ -8,6 +8,8 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const app = $('#app');
 app.innerHTML = view.shell();
 const main = $('#main');
+// Partial updates preserve scroll explicitly; prevent browser anchor correction afterward.
+main.style.overflowAnchor = 'none';
 const dialog = $('#result-dialog');
 let route = '';
 const restoredProvider = api.mode === 'gas' ? readSession('provider') : null;
@@ -19,6 +21,7 @@ let currentRows = [];
 let currentHistory = [];
 let currentProviders = [];
 let activeAdminSlot = null;
+let activeRequestDetail = null;
 let lookupRow = null;
 let toastTimer;
 let renderVersion = 0;
@@ -28,6 +31,18 @@ let refreshVersion = -1;
 let dataGeneration = 0;
 let providerViewConfig = null;
 let capacityViewDeferred = false;
+let loadedRevision = null;
+let legacyRevisionServer = false;
+let revisionRecovery = false;
+let pendingRevisionSince = null;
+let automaticTimer;
+let visibilityGeneration = 0;
+let probeOnReturn = false;
+let pollingError = '';
+const pollingConfig = RUNTIME_CONFIG.revisionPolling || {
+  providerMs: RUNTIME_CONFIG.refreshIntervalMs, adminMs: RUNTIME_CONFIG.refreshIntervalMs,
+  retryMs: RUNTIME_CONFIG.refreshIntervalMs
+};
 const titles = { home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
 
 function toast(message, isError = false) {
@@ -54,8 +69,9 @@ async function busy(button, action, errorSelector) {
   catch (error) { errorAt(errorSelector || '#nonexistent-error', error); }
   finally { button.disabled = false; button.removeAttribute('aria-busy'); button.innerHTML = original; }
 }
-function showDialog(content, { wide = false, keepSlot = false } = {}) {
+function showDialog(content, { wide = false, keepSlot = false, keepRequest = false } = {}) {
   if (!keepSlot) activeAdminSlot = null;
+  if (!keepRequest) activeRequestDetail = null;
   dialog.classList.toggle('wide-dialog', wide);
   dialog.innerHTML = '<button class="icon-button dialog-close" data-close-dialog aria-label="닫기">' + view.icon('close') + '</button>' + content;
   if (!dialog.open) dialog.showModal();
@@ -64,7 +80,7 @@ function confirmAction({ title, description, label, danger, action }) {
   showDialog('<span class="dialog-symbol">' + view.icon(danger ? 'info' : 'check') + '</span><h2 id="dialog-title">' + view.escapeHtml(title) + '</h2><p class="dialog-description">' + view.escapeHtml(description) + '</p><p class="inline-error" id="dialog-error" role="alert" hidden></p><div class="dialog-actions"><button class="button secondary" data-close-dialog>돌아가기</button><button class="button ' + (danger ? 'danger' : 'primary') + '" id="confirm-action">' + label + '</button></div>');
   $('#confirm-action').addEventListener('click', event => busy(event.currentTarget, async () => { await action(); dialog.close(); }, '#dialog-error'));
 }
-dialog.addEventListener('close', () => { activeAdminSlot = null; });
+dialog.addEventListener('close', () => { activeAdminSlot = null; activeRequestDetail = null; });
 dialog.addEventListener('click', event => {
   if (event.target.closest('[data-close-dialog]')) { dialog.close(); return; }
   if (!activeAdminSlot) return;
@@ -343,7 +359,7 @@ main.addEventListener('click', event => {
   const detail = event.target.closest('[data-detail]');
   if (detail) {
     const row = currentRows.find(item => item.id === detail.dataset.detail);
-    if (row) showDialog('<h2 id="dialog-title" class="sr-only">상담 신청 상세</h2>' + view.requestDetail(row));
+    if (row) showRequestDetail(row);
   }
   const decisionButton = event.target.closest('[data-decision]');
   if (decisionButton) {
@@ -364,6 +380,7 @@ main.addEventListener('click', event => {
 });
 async function renderRoute(focus = true) {
   const version = ++renderVersion;
+  loadedRevision = null; legacyRevisionServer = false; revisionRecovery = false; pendingRevisionSince = null; pollingError = '';
   const newRoute = location.hash.replace('#', '');
   route = titles[newRoute] ? newRoute : 'home';
   document.body.classList.toggle('home-screen', route === 'home');
@@ -443,7 +460,9 @@ async function renderRoute(focus = true) {
       main.innerHTML = '<section class="panel error-panel"><h1>화면을 불러오지 못했습니다</h1><p role="alert">' + view.escapeHtml(error.message) + '</p><button class="button primary" id="retry-page">다시 시도</button></section>';
       $('#retry-page').onclick = () => renderRoute(false);
     }
-  } finally { if (version === renderVersion) main.dataset.loading = 'false'; }
+  } finally {
+    if (version === renderVersion) { main.dataset.loading = 'false'; scheduleAutomatic(); }
+  }
 }
 
 
@@ -463,7 +482,8 @@ function capacityEditing() {
 }
 async function loadProviderView(version, partial) {
   const token = providerToken, id = activeProvider, page = route, generation = dataGeneration;
-  const rows = await api.getProviderRequests(token);
+  const snapshot = api.mode === 'gas' ? await api.getProviderSnapshot(token) : { requests: await api.getProviderRequests(token) };
+  const rows = snapshot.requests;
   if (version !== renderVersion || generation !== dataGeneration || token !== providerToken || route !== page) return;
   // New server includes fresh public config; adapter seeds its cache without another GET.
   const config = await api.getConfig();
@@ -473,8 +493,10 @@ async function loadProviderView(version, partial) {
   if (!provider) throw new Error('기업 설정을 확인해 주세요.');
   const unchanged = sameData(currentRows, rows) && sameData(providerViewConfig, provider);
   currentRows = rows; providerViewConfig = provider;
+  acceptRevision(snapshot);
   $('.profile-name').textContent = provider.name;
-  if (partial && unchanged && (!capacityViewDeferred || capacityEditing())) return;
+  if (partial && unchanged && (!capacityViewDeferred || capacityEditing())) return false;
+  const restoreViewport = preserveViewport();
   const html = page === 'matching' ? view.providerMatchingPage(id, rows, provider) : view.providerPage(id, rows, providerFilter, provider);
   if (!partial) {
     main.innerHTML = html;
@@ -488,6 +510,9 @@ async function loadProviderView(version, partial) {
     if (capacityEditing()) capacityViewDeferred = true;
     else { if (replaceRegion('.capacity-settings', template)) bindCapacity(); capacityViewDeferred = false; }
   }
+  syncOpenDetail();
+  if (partial) restoreViewport();
+  return !unchanged;
 }
 async function loadAdminView(version, partial) {
   const token = adminToken, generation = dataGeneration, overview = await api.getAdminOverview(token);
@@ -500,7 +525,9 @@ async function loadAdminView(version, partial) {
   });
   const unchanged = sameData(currentRows, overview.requests) && sameData(currentHistory, overview.history) && sameData(currentProviders, overview.providers);
   currentRows = overview.requests; currentHistory = overview.history; currentProviders = overview.providers;
-  if (partial && unchanged) return;
+  acceptRevision(overview);
+  if (partial && unchanged) return false;
+  const restoreViewport = preserveViewport();
   if (!partial) {
     main.innerHTML = view.adminPage(currentRows, currentProviders, currentHistory); bindAdmin();
   } else {
@@ -515,8 +542,45 @@ async function loadAdminView(version, partial) {
     }
     filterHistory();
   }
-  if (dialog.open && activeAdminSlot) renderAdminSlot();
+  syncOpenDetail();
+  if (partial) restoreViewport();
+  return !unchanged;
 }
+function preserveViewport() {
+  const x = window.scrollX, y = window.scrollY, top = dialog.scrollTop;
+  return () => { window.scrollTo(x, y); if (dialog.open) dialog.scrollTop = top; };
+}
+function showRequestDetail(row) {
+  activeRequestDetail = { id: row.id, role: route === 'admin' ? 'admin' : 'provider' };
+  showDialog('<h2 id="dialog-title" class="sr-only">상담 신청 상세</h2>' + view.requestDetail(row), { keepRequest: true });
+}
+function syncOpenDetail() {
+  if (!dialog.open || dialog.querySelector('input:not([readonly]):not([type="hidden"]),textarea:not([readonly]),select,[contenteditable="true"]')) return;
+  if (activeAdminSlot && route === 'admin') renderAdminSlot();
+  else if (activeRequestDetail) {
+    const role = route === 'admin' ? 'admin' : 'provider';
+    const row = role === activeRequestDetail.role && currentRows.find(row => row.id === activeRequestDetail.id);
+    if (row) showRequestDetail(row);
+  }
+}
+function acceptRevision(snapshot) {
+  legacyRevisionServer = !Object.hasOwn(snapshot, 'revision');
+  loadedRevision = typeof snapshot.revision === 'string' ? snapshot.revision : null;
+  if (!legacyRevisionServer && loadedRevision === null) {
+    pendingRevisionSince ??= Date.now();
+    revisionRecovery = Date.now() - pendingRevisionSince >= pollingConfig.retryMs;
+  } else { pendingRevisionSince = null; revisionRecovery = false; }
+}
+function flushDeferredCapacity() {
+  if (!capacityViewDeferred || capacityEditing() || !providerToken || !['npu', 'matching'].includes(route) || !providerViewConfig) return;
+  const template = document.createElement('template');
+  template.innerHTML = route === 'matching' ? view.providerMatchingPage(activeProvider, currentRows, providerViewConfig)
+    : view.providerPage(activeProvider, currentRows, providerFilter, providerViewConfig);
+  const restore = preserveViewport();
+  if (replaceRegion('.capacity-settings', template)) bindCapacity();
+  capacityViewDeferred = false; restore();
+}
+main.addEventListener('focusout', () => setTimeout(flushDeferredCapacity, 0));
 async function recoverSession(error) {
   if (!['UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)) return false;
   if (route === 'admin') { adminToken = null; clearSession('admin'); }
@@ -524,24 +588,61 @@ async function recoverSession(error) {
   currentRows = []; currentHistory = []; dialog.close();
   toast(error.message, true); await renderRoute(false); return true;
 }
-function refresh({ force = false } = {}) {
+function refresh({ force = false, changesOnly = false } = {}) {
   if (refreshPromise && refreshVersion === renderVersion && !force) return refreshPromise;
   if (force) dataGeneration++;
-  const version = renderVersion;
+  const version = renderVersion, generation = dataGeneration;
   refreshVersion = version;
   const pending = (async () => {
+    const detecting = changesOnly && api.mode === 'gas' && !legacyRevisionServer &&
+      (route === 'admin' || ['npu', 'matching'].includes(route));
+    if (detecting) {
+      const visibility = visibilityGeneration;
+      try {
+        const result = route === 'admin' ? await api.getAdminRevision({ token: adminToken })
+          : await api.getProviderRevision({ token: providerToken });
+        if (version !== renderVersion || generation !== dataGeneration || visibility !== visibilityGeneration || document.visibilityState !== 'visible') return;
+        revisionRecovery = false; pendingRevisionSince = null;
+        if (result.revision === loadedRevision) { flushDeferredCapacity(); return; }
+      } catch (error) {
+        if (version !== renderVersion || generation !== dataGeneration || visibility !== visibilityGeneration) return;
+        // During rollout, old servers retain 30s full polling. An interrupted
+        // cross-service commit uses the same bounded fallback until revision recovers.
+        if (error.code === 'UNKNOWN_ACTION') legacyRevisionServer = true;
+        else if (error.code === 'REVISION_PENDING') {
+          pendingRevisionSince ??= Date.now();
+          // A normal write may still be finishing. Keep lightweight probes fast;
+          // full reconciliation is only a fallback for a persistent publication failure.
+          if (Date.now() - pendingRevisionSince < pollingConfig.retryMs) return;
+          revisionRecovery = true;
+        }
+        else throw error;
+      }
+    }
+    if (version !== renderVersion || generation !== dataGeneration) return;
+    const previousRows = currentRows, previousRevision = loadedRevision;
+    let changed = false;
     if (route === 'apply') await loadTimes();
     else if (route === 'lookup' && lookupRow) {
       const original = lookupRow, latest = await api.findRequest({ id: original.id, email: original.email });
       if (version !== renderVersion || route !== 'lookup' || lookupRow !== original) return;
       lookupRow = latest;
       if (!sameData(original, latest)) showLookup(lookupRow);
-    } else if ((route === 'npu' || route === 'matching') && providerToken) await loadProviderView(version, true);
-    else if (route === 'admin' && adminToken) await loadAdminView(version, true);
+    } else if ((route === 'npu' || route === 'matching') && providerToken) changed = await loadProviderView(version, true);
+    else if (route === 'admin' && adminToken) changed = await loadAdminView(version, true);
+    if (detecting && changed && previousRevision !== null && version === renderVersion && generation === dataGeneration) {
+      if (route === 'admin') toast('운영 현황이 업데이트되었습니다.');
+      else {
+        const ids = new Set(previousRows.map(row => row.id));
+        if (currentRows.some(row => !ids.has(row.id) && row.status === STATUS.PENDING)) toast('새 상담 신청이 접수되었습니다.');
+      }
+    }
   })().catch(async error => {
     if (version !== renderVersion) return;
     if (!await recoverSession(error)) throw error;
-  }).finally(() => { if (refreshPromise === pending) refreshPromise = null; });
+  }).finally(() => {
+    if (refreshPromise === pending) { refreshPromise = null; if (version === renderVersion) scheduleAutomatic(); }
+  });
   refreshPromise = pending; return pending;
 }
 function needsPolling() {
@@ -572,7 +673,10 @@ window.addEventListener('storage', event => {
   if (api.mode === 'mock' && (event.key === STORAGE_KEY || event.key === null)) refresh().catch(error => toast(error.message, true));
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && needsPolling() && main.dataset.loading !== 'true') refresh().catch(error => toast(error.message, true));
+  visibilityGeneration++;
+  clearTimeout(automaticTimer);
+  probeOnReturn = document.visibilityState === 'visible';
+  if (probeOnReturn) automaticRefresh();
 });
 renderRoute(false);
 
@@ -581,12 +685,31 @@ $('#provider-logout').onclick = async () => {
   clearSession('provider'); providerToken = null; activeProvider = ''; currentRows = [];
   dialog.close(); await renderRoute(false);
 };
-let polling = false;
-if (api.mode === 'gas') setInterval(async () => {
-  if (!needsPolling() || polling || main.dataset.loading === 'true' || document.visibilityState !== 'visible' || document.querySelector('[aria-busy="true"]')) return;
-  const editing = document.activeElement?.matches('input,select,textarea');
-  const dirty = [...document.querySelectorAll('.slot-capacity-form input[name="capacity"]')].some(input => input.value !== input.defaultValue);
-  if (route !== 'apply' && (editing || dirty || (dialog.open && !activeAdminSlot))) return;
-  polling = true;
-  try { await refresh(); } catch (error) { toast(error.message, true); } finally { polling = false; }
-}, Math.max(5000, RUNTIME_CONFIG.refreshIntervalMs));
+function automaticDelay() {
+  if (revisionRecovery) return pollingConfig.retryMs;
+  if (!legacyRevisionServer && ['npu', 'matching'].includes(route) && providerToken) return pollingConfig.providerMs;
+  if (!legacyRevisionServer && route === 'admin' && adminToken) return pollingConfig.adminMs;
+  return RUNTIME_CONFIG.refreshIntervalMs;
+}
+function scheduleAutomatic(delay = probeOnReturn ? 0 : automaticDelay()) {
+  clearTimeout(automaticTimer);
+  if (api.mode === 'gas' && needsPolling() && document.visibilityState === 'visible')
+    automaticTimer = setTimeout(automaticRefresh, delay);
+}
+async function automaticRefresh() {
+  clearTimeout(automaticTimer);
+  if (api.mode !== 'gas' || !needsPolling() || document.visibilityState !== 'visible' ||
+      main.dataset.loading === 'true' || (refreshPromise && refreshVersion === renderVersion)) return;
+  // Partial rendering protects drafts/filters while detection continues.
+  if (document.querySelector('[aria-busy="true"]') ||
+      (route === 'lookup' && (dialog.open || document.activeElement?.matches('input,select,textarea')))) {
+    scheduleAutomatic(); return;
+  }
+  probeOnReturn = false;
+  try { await refresh({ changesOnly: true }); pollingError = ''; }
+  catch (error) {
+    scheduleAutomatic(pollingConfig.retryMs);
+    if (pollingError !== error.message) toast(error.message, true);
+    pollingError = error.message;
+  }
+}

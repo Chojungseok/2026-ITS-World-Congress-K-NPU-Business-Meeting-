@@ -20,7 +20,7 @@ function doPost(e) {
 }
 function handle_(method, input) {
   try {
-    if (method === 'GET' && !['getConfig','getAvailability'].includes(input.action))
+    if (method === 'GET' && !['getConfig','getAvailability','getAvailabilityRevision'].includes(input.action))
       fail_('METHOD_NOT_ALLOWED', '이 기능은 POST 요청이 필요합니다.');
     // Mutations/auth counters keep the same common lock. Pure reads do not queue behind them.
     var lockedActions = ['submitRequest', 'cancelRequest', 'decideRequest', 'updateProviderCapacity',
@@ -41,6 +41,13 @@ function dispatch_(input) {
   // Explicit allowlist: never dynamically call a function named by a client.
   switch (input.action) {
     case 'getConfig': return publicConfig_();
+    case 'getProviderRevision':
+      session = session_(input.token, 'provider');
+      return revision_('providers', session.providerId);
+    case 'getAdminRevision':
+      session_(input.token, 'admin');
+      return revision_('admin');
+    case 'getAvailabilityRevision': return availabilityRevision_(input.providerId);
     case 'getAvailability': return availability_(availabilitySnapshot_(), input.providerId);
     case 'submitRequest': return submit_(database_(['providers', 'capacities', 'requests']), input);
     case 'findRequest': return publicRow_(verifiedRequest_(database_(), input));
@@ -53,11 +60,14 @@ function dispatch_(input) {
       return null;
     case 'getProviderRequests':
       session = session_(input.token, 'provider');
+      // Capture BEFORE reading. A concurrent commit leaves an older revision, so the
+      // next probe detects it; never label an old snapshot with a newer revision.
+      var providerRevision = snapshotRevision_('providers', session.providerId);
       db = database_(input.includeConfig === true ? ['providers', 'requests', 'capacities'] : ['providers', 'requests']);
       provider_(db, session.providerId, true);
       var requests = rows_(db, 'requests').filter(function(r) { return r.providerId === session.providerId; }).map(publicRow_);
       // Optional envelope for new adapters; legacy callers still receive the same array.
-      return input.includeConfig === true ? { requests: requests, config: config_(db) } : requests;
+      return input.includeConfig === true ? { requests: requests, config: config_(db), revision: providerRevision } : requests;
     case 'decideRequest':
       session = session_(input.token, 'provider');
       return decide_(database_(['providers', 'requests', 'capacities']), session, input);
@@ -71,11 +81,15 @@ function dispatch_(input) {
       session_(input.token, 'admin');
       // batchGet alone does not document cross-range transaction isolation. Keep a short
       // snapshot lock for the admin's mutually consistent requests/history/capacities.
-      db = withLock_(function() { return database_(['requests', 'history', 'providers', 'capacities']); });
+      var adminRevision;
+      db = withLock_(function() {
+        adminRevision = snapshotRevision_('admin');
+        return database_(['requests', 'history', 'providers', 'capacities']);
+      });
       var history = rows_(db, 'history');
       history.sort(function(a, b) { return String(b.occurredAt).localeCompare(String(a.occurredAt)) || b._row - a._row; });
       var config = config_(db);
-      return { requests: rows_(db, 'requests').map(publicRow_), history: history.map(publicRow_), providers: config.providers, config: config };
+      return { requests: rows_(db, 'requests').map(publicRow_), history: history.map(publicRow_), providers: config.providers, config: config, revision: adminRevision };
     default: fail_('UNKNOWN_ACTION', '지원하지 않는 요청입니다.');
   }
 }

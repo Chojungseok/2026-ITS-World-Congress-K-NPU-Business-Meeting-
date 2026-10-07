@@ -24,13 +24,13 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     configPromise = pending;
     return pending;
   }
-  async function providerRequests(token) {
+  async function providerSnapshot(token) {
     const generation = configGeneration;
     const data = await call('getProviderRequests', { token, includeConfig: true });
     // Old deployed servers return an array; keep that interface working during rollout.
-    if (Array.isArray(data)) return data;
+    if (Array.isArray(data)) return { requests: data };
     if (data?.config && generation === configGeneration) rememberConfig(data.config);
-    return data.requests;
+    return { requests: data.requests, ...(Object.hasOwn(data, 'revision') ? { revision: data.revision } : {}) };
   }
   async function adminOverview(token) {
     const generation = configGeneration;
@@ -74,6 +74,12 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
       throw new ApiError('NETWORK_ERROR', '연결이 끊겼거나 응답이 지연되었습니다. 처리 결과를 조회한 후 다시 시도해 주세요.');
     } finally { clearTimeout(timer); }
   }
+  async function revision(action, input, method = 'POST') {
+    const result = await call(action, input, method);
+    if (typeof result?.revision !== 'string' || !result.revision)
+      throw new ApiError('INVALID_RESPONSE', '변경 버전을 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.');
+    return { revision: result.revision };
+  }
   function identity(input) {
     if (!input?.id?.trim() || !input?.email?.trim()) throw new ApiError('IDENTITY_REQUIRED', '신청ID와 신청 이메일을 입력해 주세요.');
     return { id: input.id.trim(), email: input.email.trim() };
@@ -90,7 +96,12 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     authenticateAdmin: input => call('authenticateAdmin', input),
     updateProviderCapacity: updateCapacity,
     logout: token => call('logout', { token }),
-    getProviderRequests: providerRequests,
+    // Preserve the original array contract; snapshot metadata is opt-in for the UI.
+    getProviderRequests: async token => (await providerSnapshot(token)).requests,
+    getProviderSnapshot: providerSnapshot,
+    getProviderRevision: ({ token }) => revision('getProviderRevision', { token }),
+    getAdminRevision: ({ token }) => revision('getAdminRevision', { token }),
+    getAvailabilityRevision: providerId => revision('getAvailabilityRevision', { providerId }, 'GET'),
     decideRequest: input => call('decideRequest', input),
     getAdminRequests: token => call('getAdminRequests', { token }),
     getAdminOverview: adminOverview

@@ -1,5 +1,7 @@
 # K-NPU 성능 개선 보고서
 
+> 이 문서는 1차 성능 개선 당시의 비교 기록입니다. 이후 추가된 NPU 5초/관리자 10초 변경 버전 확인 구조와 현재 배포 절차는 [변경 감지 보고서](lightweight-change-detection.md)를 참고하세요.
+
 대상: Chojungseok/2026-ITS-World-Congress-K-NPU-Business-Meeting-
 기준 커밋: a9f7de75fb52448b2ab43649ac236893f84432fc
 작성: 2026-10-07

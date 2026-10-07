@@ -12,7 +12,7 @@
 | mock-api.js | 보존. 기존 ID-only 테스트 계약 유지, 이메일이 주어지면 검증 추가 |
 | gas-api.js | 동일한 메서드/반환 형태의 HTTP 전송·오류 처리, 공개 설정 30초 메모리 캐시·진행 중 요청 공유 |
 | config.js | 기존 로컬 기본값 보존, 운영에서는 서버 기업·시간·정원·동의 버전 반영 |
-| app.js | 이메일 조회, 세션 복원, 운영 설정, 필요한 화면의 30초 부분 갱신, 만료 재로그인 |
+| app.js | 이메일 조회, 세션 복원, 운영 설정, NPU 5초/관리자 10초 버전 확인 후 부분 갱신, 만료 재로그인 |
 | views.js | 조회 이메일 필드, 실제 저장 방식/동의문, 운영/로컬 문구 구별, NPU 로그아웃 |
 | session-store.js | 토큰만 sessionStorage 저장, 만료된 값 제거 |
 | Apps Script | 중앙 원본 DB, 권한·입력·정원 검증, 원자적 감사 기록 |
@@ -32,16 +32,20 @@
 | authenticateAdmin | {id,password} | token 문자열 | 관리자 인증 POST |
 | logout | token 문자열 | null | 유효 세션 POST |
 | getProviderRequests | token 문자열 | 본인 기업 신청 배열 | NPU POST |
+| getProviderSnapshot | token 문자열 | {requests,revision} | NPU POST, 같은 getProviderRequests 서버 동작 |
+| getProviderRevision | {token} | {revision} | NPU POST, Sheet I/O 없음 |
+| getAdminRevision | {token} | {revision} | 관리자 POST, Sheet I/O 없음 |
+| getAvailabilityRevision | providerId 문자열 | {revision} | 공개 GET, Sheet I/O 없음 |
 | decideRequest | {token,id,decision} | 변경된 신청 객체 | NPU POST |
 | updateProviderCapacity | {token,time,capacity} | {providerId,time,capacity} | NPU POST |
 | getAdminRequests | token 문자열 | 전체 신청 배열 | 관리자 POST |
-| getAdminOverview | token 문자열 | {requests,history,providers,config} | 관리자 POST |
+| getAdminOverview | token 문자열 | {requests,history,providers,config,revision} | 관리자 POST |
 
 decision은 매칭확정 또는 매칭거절입니다. status는 승인대기/매칭확정/매칭거절/신청취소입니다. resetDemo는 운영 구현과 서버에 없습니다.
 
-HTTP 본문은 메서드 인자와 action을 같은 객체에 둡니다. 예: `{action:'getProviderRequests',token:...}`. getConfig/getAvailability 외 GET 호출은 거부합니다. 서버에는 client가 지정한 함수명을 실행하는 경로가 없습니다.
+HTTP 본문은 메서드 인자와 action을 같은 객체에 둡니다. 예: `{action:'getProviderRequests',token:...}`. getConfig/getAvailability/getAvailabilityRevision 외 GET 호출은 거부합니다. 서버에는 client가 지정한 함수명을 실행하는 경로가 없습니다.
 
-성능 개선 서버는 getProviderRequests의 POST 본문에 선택적으로 `includeConfig:true`가 있으면 `{requests,config}`를 반환합니다. 없으면 기존 배열을 반환합니다. gas-api.js는 이 응답을 배열로 풀어서 UI 계약을 유지하고 공개 config만 메모리에 보관합니다. 기존 배포가 배열을 반환하는 경우도 지원합니다. getAdminOverview에는 공개 config 필드를 추가했으며 기존 세 필드는 그대로 유지합니다.
+성능 개선 서버는 getProviderRequests의 POST 본문에 선택적으로 `includeConfig:true`가 있으면 `{requests,config,revision}`을 반환합니다. 없으면 기존 배열을 반환합니다. gas-api.js는 이 응답을 배열로 풀어서 UI 계약을 유지하고 공개 config만 메모리에 보관합니다. 기존 배포가 배열을 반환하는 경우도 지원합니다. getProviderSnapshot은 같은 서버 동작의 revision을 함께 반환하는 선택적 어댑터 메서드입니다. getProviderRequests의 기존 배열 계약은 유지합니다. getAdminOverview에는 config/revision을 추가했으며 기존 필드도 유지합니다. revision 필드가 없는 이전 서버는 30초 전체 갱신으로 호환됩니다.
 
 신청 객체는 기존 id/createdAt/itsCompany/contactName/phone/email/providerId/time/attendees/details/status/privacyConsent/privacyConsentedAt/privacyNoticeVersion을 유지하고 providerName/updatedAt을 추가합니다. 시트 내부 행 번호는 반환하지 않습니다.
 
@@ -78,16 +82,22 @@ history는 기존 action/occurredAt/actor/requestId/itsCompany/providerId/time/f
 
 GET에는 action/providerId만 둡니다. POST는 text/plain;charset=utf-8 JSON, credentials omit, mode cors, redirect follow입니다. no-cors/JSONP를 사용하지 않습니다. JSON 응답이나 네트워크 확인 없이 성공 처리하지 않습니다. 쓰기 자동 재시도는 없습니다.
 
-자동 갱신 기본값은 30초입니다. home, 빈 lookup, 로그인 전에는 polling하지 않습니다. apply는 availability만, 조회를 마친 lookup은 ID+이메일 확인, 로그인 후 NPU/matching은 본인 기업 목록, admin은 overview만 갱신합니다. ITS 입력값·시간 선택, NPU 정원 초안·상태 탭, 관리자 필터를 보존하며 바뀐 데이터 영역만 교체합니다. 같은 화면의 진행 중 갱신은 공유하고 변경 완료 후 갱신은 이전 조회보다 우선합니다. 수동 새로고침과 화면 복귀도 서버 데이터를 읽습니다. 이 구조는 push 실시간 연결이 아니라 주기 조회입니다.
+NPU/matching은 5초마다 getProviderRevision, 관리자는 10초마다 getAdminRevision을 호출합니다. 동일 버전이면 목록·설정을 다시 읽지 않습니다. 변경된 경우만 기존 부분 갱신으로 목록/overview를 읽습니다. 최초 진입과 수동 새로고침은 바로 전체 데이터를 읽습니다. home/빈 lookup/로그인 전/숨긴 탭은 주기 요청이 없습니다. visible 복귀는 즉시 버전을 확인하며 진행 중 요청이 있으면 중복 없이 끝난 직후 확인합니다. apply와 조회를 마친 lookup은 기존 30초 갱신을 유지합니다.
+
+정원 초안·상태 탭·관리자 필터·가능한 범위의 스크롤 위치·열린 상세 팝업을 보존합니다. revision 확인과 데이터 갱신은 하나의 진행 중 Promise로 중복을 막고, 변경 완료 후 강제 갱신은 기존 generation 보호를 유지합니다. 변경 알림은 실제 새 데이터 반영 시에만 한 번 표시하며 소리는 없습니다.
+
+서버는 Script Properties의 KNPU_REVISIONS_V1에 global/admin/기업별 providers·availability 버전을 둡니다. 모든 정상 변경은 원자적 Sheet+이력 저장 성공 후 같은 쓰기 잠금 안에서 새 UUID 버전을 발행합니다. Provider 전체 조회는 시트를 읽기 전 버전, admin은 snapshot 잠금 안의 버전을 반환합니다. 클라이언트는 확인 API에서 본 최신 버전이 아닌 실제 받은 snapshot 버전만 기억하므로 조회 도중 변경을 놓치지 않습니다. 새 시트나 기존 속성 초기화는 없습니다. [변경 감지 설계와 복구 조건](lightweight-change-detection.md)을 참고하세요.
 
 공개 config는 브라우저 메모리 및 Script Cache에서 각각 30초만 보관합니다. 정원 변경은 양쪽 캐시를 무효화하며 이전 응답이 캐시를 되살리지 못하게 버전을 확인합니다. 개인정보·목록·정원 검증용 데이터는 지속 캐시하지 않습니다. 서버의 요청별 snapshot은 같은 시트/헤더의 재조회를 막고 요청 종료 후 폐기합니다. 수동 기업/운영여부 변경 후에는 편집기에서 refreshPublicConfig()를 실행합니다. 개인정보 안내 속성은 서버 캐시를 반환하기 전에 다시 비교합니다. 자세한 호출 수와 일관성 범위는 [성능 보고서](performance-optimization.md)를 참고하세요.
 
 ## 검증 범위
 
-`npm test`의 55개 검사는 기존 mock 테스트와 실제 .gs 소스를 Node VM에서 실행하는 서버 테스트, 어댑터 전송/세션 테스트를 실행합니다. Google 서비스 모형의 잠금과 batch API가 실제 서버 코드를 검증합니다.
+`npm test`의 65개 검사는 기존 mock 테스트와 실제 .gs 소스를 Node VM에서 실행하는 서버 테스트, 어댑터 전송/세션 테스트를 실행합니다. Google 서비스 모형의 잠금과 batch API가 실제 서버 코드를 검증합니다.
 
 `tests/browser-gas-smoke.mjs`는 선택적 Playwright 검사입니다. 실제 프론트엔드를 분리된 브라우저 컨텍스트에서 실행하고 GAS 요청만 서비스 모형에 연결합니다. npm start로 서버를 실행하고 Playwright가 있는 환경에서 실행합니다. PLAYWRIGHT_MODULE, BROWSER_CHANNEL, PREVIEW_URL 환경변수를 선택적으로 사용할 수 있습니다.
 
 `tests/browser-performance.mjs`는 화면별 실제 어댑터 호출 수, 지연 중 즉시 화면 표시, 필터/초안 유지, 승인 후 늦은 응답 무시를 검증합니다. `node tests/measure-performance.mjs`는 합성 신청 200건에 대한 이전 커밋과 현재 서버의 서비스 호출 횟수를 비교합니다. 두 스크립트 모두 운영 DB에 접근하지 않습니다.
+
+`tests/revision.test.mjs`는 버전 변경 범위·인증·시트 읽기 0·발행 실패·snapshot 경합을 검사합니다. `tests/browser-revision.mjs`는 다른 클라이언트의 변경 자동 반영, 팝업/필터/초안, hidden/visible, 중복 방지, 실패 후 재검사를 확인합니다. `node tests/measure-revision.mjs`로 30분/5회 변경의 합성 서비스 호출 및 payload 크기를 비교합니다.
 
 로컬 테스트는 실제 Google 서버의 배포 권한, CORS, API 할당량을 검증하지 않습니다. [설정·실기기 검증 안내](../apps-script/README.md)를 따라 사용자 계정에서 완료해야 합니다.

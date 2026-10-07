@@ -84,7 +84,11 @@ function writeBatch_(db, changes) {
     var configChanged = changes.some(function(change) { return ['capacities', 'providers'].includes(change.type); });
     // Versioned keys prevent a slow, pre-change cache fill resurrecting stale config.
     if (configChanged) invalidatePublicConfig_();
-    try { Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId()); }
+    var revisionChange = prepareRevision_(changes);
+    try {
+      Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId());
+      publishRevision_(revisionChange); // Only after both data and audit commit, while still locked.
+    }
     finally { if (configChanged) invalidatePublicConfig_(); }
     changes.forEach(function(change) { delete db.records[change.type]; });
   }

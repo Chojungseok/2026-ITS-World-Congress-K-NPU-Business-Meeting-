@@ -52,6 +52,6 @@ function setupSystem() {
 
 // Editor-only: run after manual NPU/operating-status edits. No public API route.
 function refreshPublicConfig() {
-  withLock_(function() { invalidatePublicConfig_(); });
+  withLock_(function() { invalidatePublicConfig_(); publishAllRevisions_(); });
   console.log('공개 설정 캐시를 갱신했습니다.');
 }
