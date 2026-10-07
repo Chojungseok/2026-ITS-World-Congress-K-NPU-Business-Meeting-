@@ -1,0 +1,104 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import fs from 'node:fs/promises';
+import {createHarness} from './gas-harness.mjs';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});
+const h=createHarness(),base=process.env.PREVIEW_URL||'http://127.0.0.1:4173/',url='https://script.google.com/macros/s/test/exec';
+const report={},errors=[];
+const gate=()=>{let release;const wait=new Promise(r=>{release=r;});return {wait,release};};
+async function client(hash,{pause=null}={}) {
+ const ctx=await browser.newContext({viewport:{width:1440,height:1000}});
+ const actions=[];const control={hold:null};
+ await ctx.route('**/assets/js/runtime-config.js',route=>route.fulfill({contentType:'text/javascript',body:
+  "export const RUNTIME_CONFIG={backend:'gas',gasUrl:"+JSON.stringify(url)+",refreshIntervalMs:5000};export function resolveBackend(){return 'gas';}"}));
+ await ctx.route(url+'**',async route=>{
+  const r=route.request(),action=r.method()==='GET'?new URL(r.url()).searchParams.get('action'):JSON.parse(r.postData()).action;
+  actions.push(action);if(pause)await pause.wait;
+  const response=await h.fetch(r.url(),{method:r.method(),body:r.postData()});
+  if(control.hold?.action===action){const held=control.hold;control.hold=null;held.seen.release();await held.reply.wait;}
+  await route.fulfill({contentType:'application/json',body:await response.text()});
+ });
+ const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));await page.clock.install();
+ await page.goto(base+'#'+hash);return {ctx,page,actions,control};
+}
+const ready=p=>p.waitForFunction(()=>document.querySelector('#main')?.dataset.loading==='false');
+const navigate=async(p,hash)=>{await p.evaluate(hash=>{location.hash=hash;},hash);await p.waitForFunction(hash=>location.hash==='#'+hash && (hash==='home' ? document.body.classList.contains('home-screen') : document.querySelector('[data-route="'+hash+'"]')?.classList.contains('active')),hash);await ready(p);};
+const assertCalls=(name,actions,expected)=>{assert.deepEqual([...actions].sort(),[...expected].sort(),name);report[name]={count:actions.length,actions:[...actions]};actions.length=0;};
+try {
+ const homeGate=gate(),home=await client('home',{pause:homeGate});
+ await home.page.locator('#welcome-title').waitFor();await home.page.clock.fastForward(6000);
+ assertCalls('home',home.actions,[]);homeGate.release();
+ const applyGate=gate(),apply=await client('apply',{pause:applyGate});
+ await apply.page.locator('#application-form').waitFor();await apply.page.locator('[name="itsCompany"]').fill('로딩 중 입력 보존');
+ assert.equal(await apply.page.locator('#application-form button[type="submit"]').isDisabled(),true);
+ assert.equal(await apply.page.locator('[name="privacyConsent"]').isDisabled(),true);
+ await apply.page.waitForFunction(()=>document.querySelector('#time-options')?.textContent.includes('불러오는 중'));
+ applyGate.release();await ready(apply.page);
+ assert.equal(await apply.page.locator('[name="itsCompany"]').inputValue(),'로딩 중 입력 보존');
+ assertCalls('apply-cold',apply.actions,['getConfig','getAvailability']);
+ const pollResponse=apply.page.waitForResponse(r=>r.url().includes('action=getAvailability'));
+ await apply.page.clock.fastForward(6000);await pollResponse;await apply.page.evaluate(()=>new Promise(requestAnimationFrame));
+ assertCalls('apply-poll',apply.actions,['getAvailability']);
+ await navigate(apply.page,'home');await navigate(apply.page,'apply');
+ assertCalls('apply-warm',apply.actions,['getAvailability']);
+ const lookup=await client('lookup');await ready(lookup.page);await lookup.page.clock.fastForward(6000);
+ assertCalls('lookup-empty',lookup.actions,[]);
+ const row=h.value(h.call('submitRequest',h.form()));
+ await lookup.page.locator('[name="id"]').fill(row.id);await lookup.page.locator('[name="email"]').fill(row.email);
+ await lookup.page.locator('#lookup-form button[type="submit"]').click();await lookup.page.locator('.detail-id').waitFor();
+ assertCalls('lookup-submit',lookup.actions,['findRequest']);
+ const npu=await client('npu');await ready(npu.page);
+ assertCalls('npu-login-page',npu.actions,['getConfig']);
+ await npu.page.clock.fastForward(6000);assertCalls('npu-login-idle',npu.actions,[]);
+ await npu.page.locator('[name="providerId"]').selectOption('deepx');
+ await npu.page.locator('[name="approvalCode"]').fill(h.credentials.deepx);
+ await npu.page.locator('#provider-login-form button[type="submit"]').click();await npu.page.locator('.status-tabs').waitFor();await ready(npu.page);
+ assertCalls('npu-login-submit',npu.actions,['authenticateProvider','getProviderRequests']);
+ await navigate(npu.page,'home');await navigate(npu.page,'npu');
+ assertCalls('npu-list',npu.actions,['getProviderRequests']);
+ await navigate(npu.page,'matching');assertCalls('matching',npu.actions,['getProviderRequests']);
+ await navigate(npu.page,'npu');npu.actions.length=0;
+ await npu.page.evaluate(()=>{window.savedTabs=document.querySelector('.status-tabs');window.savedCapacity=document.querySelector('.capacity-settings');});
+ const response=npu.page.waitForResponse(r=>r.url()===url);
+ await npu.page.locator('#refresh-provider').click();await response;await npu.page.evaluate(()=>new Promise(requestAnimationFrame));
+ assert.equal(await npu.page.evaluate(()=>window.savedTabs===document.querySelector('.status-tabs')&&window.savedCapacity===document.querySelector('.capacity-settings')),true);
+ assertCalls('npu-unchanged-refresh',npu.actions,['getProviderRequests']);
+ const extra=h.value(h.call('submitRequest',h.form({email:'second@example.com'})));
+ const draft=npu.page.locator('.slot-capacity-form [name="capacity"]').nth(1);await draft.fill('17');
+ await npu.page.locator('#refresh-provider').click();await npu.page.locator('[data-detail="'+extra.id+'"]').waitFor();
+ assert.equal(await draft.inputValue(),'17');
+ assert.equal(await npu.page.evaluate(()=>window.savedTabs===document.querySelector('.status-tabs')),true);
+ assertCalls('npu-changed-refresh',npu.actions,['getProviderRequests']);
+
+ // A slow pre-approval refresh must neither delay the mutation refresh nor restore old state.
+ const stale={action:'getProviderRequests',seen:gate(),reply:gate()};npu.control.hold=stale;
+ await draft.fill('5');await npu.page.locator('#refresh-provider').click();await stale.seen.wait;
+ await npu.page.locator('[data-decision="매칭확정"][data-id="'+row.id+'"]').click();
+ await npu.page.locator('#confirm-action').click();
+ await npu.page.locator('#result-dialog').waitFor({state:'hidden',timeout:5000});
+ const staleResponse=npu.page.waitForResponse(r=>r.url()===url);
+ stale.reply.release();await staleResponse;await npu.page.evaluate(()=>new Promise(requestAnimationFrame));
+ const firstCard=npu.page.locator('.request-card').filter({has:npu.page.locator('[data-detail="'+row.id+'"]')});
+ assert.equal(await firstCard.locator('.badge.confirmed').count(),1);
+ npu.actions.length=0;
+ const admin=await client('admin');await ready(admin.page);await admin.page.clock.fastForward(6000);
+ assertCalls('admin-login-page',admin.actions,[]);
+ await admin.page.locator('[name="id"]').fill(h.admin.id);await admin.page.locator('[name="password"]').fill(h.admin.password);
+ await admin.page.locator('#admin-login-form button[type="submit"]').click();await admin.page.locator('#history-filters').waitFor();await ready(admin.page);
+ assertCalls('admin-login-submit',admin.actions,['authenticateAdmin','getAdminOverview']);
+ await navigate(admin.page,'home');await navigate(admin.page,'admin');assertCalls('admin-dashboard',admin.actions,['getAdminOverview']);
+ await admin.page.locator('#history-filters [name="query"]').fill('테스트');
+ await admin.page.evaluate(()=>{window.savedFilters=document.querySelector('#history-filters');});
+ h.value(h.call('submitRequest',h.form({email:'third@example.com'})));
+ const adminResponse=admin.page.waitForResponse(r=>r.url()===url);await admin.page.locator('#refresh-admin').click();await adminResponse;
+ await admin.page.waitForFunction(()=>document.querySelector('.history-panel .count-pill')?.textContent==='4');
+ assert.equal(await admin.page.evaluate(()=>window.savedFilters===document.querySelector('#history-filters')),true);
+ assert.equal(await admin.page.locator('#history-filters [name="query"]').inputValue(),'테스트');
+ assertCalls('admin-changed-refresh',admin.actions,['getAdminOverview']);
+ for(const c of [home,apply,lookup,npu,admin])assert.equal(await c.page.evaluate(()=>Object.keys(localStorage).length),0);
+ assert.deepEqual(errors,[]);
+ await fs.mkdir('artifacts',{recursive:true});await fs.writeFile('artifacts/frontend-request-counts.json',JSON.stringify(report,null,2));
+ console.log(JSON.stringify(report,null,2));console.log('PASS: immediate UI, request counts, idle polling, cache reuse, partial DOM updates and draft preservation.');
+} finally {await browser.close();}

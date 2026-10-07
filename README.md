@@ -2,7 +2,9 @@
 
 강릉 K-NPU 전환 밋업의 ITS 기업 ↔ NPU 기업 1:1 비즈매칭 시스템입니다. 기존 HTML/CSS/JavaScript 화면을 유지하고, 로컬 mock과 Google Apps Script + 비공개 Google Sheets 운영 백엔드를 선택할 수 있게 구성했습니다.
 
-**현재 Google DB 생성과 Web App 배포는 사용자가 직접 진행해야 합니다.** 저장소의 코드만으로 Google 리소스가 자동 생성되지는 않습니다. 먼저 [Google 설정 안내](apps-script/README.md)를 따라 권한을 승인하고 setupSystem()을 실행하세요.
+현재 운영 연결용 Web App URL이 설정되어 있습니다. **이번 성능 개선 코드를 운영에 적용하려면 기존 Apps Script 배포를 새 버전으로 갱신하고 프론트엔드를 GitHub에 반영해야 합니다.** 기존 DB·URL·인증정보를 유지하며 DB를 다시 만들 필요는 없습니다. [성능 개선 및 적용 보고서](docs/performance-optimization.md)를 참고하세요.
+
+새 환경을 처음 만드는 경우에만 [Google 설정 안내](apps-script/README.md)에 따라 권한을 승인하고 setupSystem()을 실행합니다. 저장소의 코드만으로 Google 리소스가 생성되지는 않습니다.
 
 ## 실행
 
@@ -42,7 +44,7 @@ assets/js/runtime-config.js 한 곳에서 공개 GAS URL과 backend를 관리합
 
 시간은 16:50–17:30의 10분 단위 4개 구간입니다. 초기 동시 상담 건수는 딥엑스 5, 모빌린트 2, 퓨리오사 1, 리벨리온 2이며 각 시간대별 0~50으로 변경할 수 있습니다. 이미 확정한 건수 아래로 줄일 수 없습니다.
 
-운영에서는 약 15초 주기로 서버 상태를 갱신합니다. 편집 중인 정원/필터는 보호하며 수동 새로고침도 제공합니다. 최종 승인 가능 여부는 항상 서버가 다시 검증합니다.
+운영에서는 필요한 화면만 약 30초 주기로 서버 상태를 갱신합니다. 첫 화면과 조회 전/로그인 전 화면은 주기 조회를 하지 않습니다. 편집 중인 정원/필터는 보호하며 수동 새로고침도 제공합니다. 최종 승인 가능 여부는 항상 서버가 다시 검증합니다.
 
 ## 로컬 데모 인증
 
@@ -90,10 +92,16 @@ tests/gas-api.test.mjs
 tests/gas-backend.test.mjs
 tests/gas-harness.mjs
 tests/browser-gas-smoke.mjs
+tests/performance.test.mjs
+tests/browser-performance.mjs
+tests/measure-performance.mjs
 docs/google-apps-script-integration.md
+docs/performance-optimization.md
 ```
 
 ## 설정과 배포
+
+이미 운영 중인 경우 [기존 배포 갱신 절차](apps-script/README.md#기존-운영-환경에-이번-성능-개선-적용)에 따릅니다. 아래는 신규 환경 설정 순서입니다.
 
 1. [Google 설정 안내](apps-script/README.md)에 따라 Apps Script 파일/매니페스트를 복사합니다.
 2. setupSystem 실행·Google 권한 승인 → 생성된 DB 공유가 제한됨인지 확인합니다.
@@ -104,7 +112,7 @@ docs/google-apps-script-integration.md
 7. 확인된 코드와 공개 URL을 GitHub에 푸시하고 Pages의 main / root 배포를 사용합니다.
 8. 실제 Pages 주소에서 모바일 신청 → PC 관리자/NPU 승인 → 모바일 조회를 확인합니다.
 
-현재 작업에서 실제 Google 리소스 생성, GitHub 푸시, Pages 설정 변경은 실행하지 않았습니다. 기존 Pages가 켜져 있다면 main 푸시로 자동 배포될 수 있으므로 URL 설정과 Google 준비를 마친 뒤 반영하세요.
+이번 성능 개선 작업에서는 Google 배포와 GitHub 푸시를 실행하지 않았습니다. 기존 GAS 배포를 먼저 새 버전으로 갱신한 다음 프론트엔드를 반영하세요. 기존 Pages가 켜져 있다면 main 푸시로 자동 배포될 수 있습니다.
 
 ## 보안과 테스트 범위
 
@@ -112,6 +120,6 @@ docs/google-apps-script-integration.md
 
 정원 변경/승인/취소/신청은 서버 ScriptLock으로 직렬화하고 상태와 처리이력을 하나의 Sheets batchUpdate로 저장합니다. 문자열 셀은 수식으로 해석되지 않게 기록합니다.
 
-기존 27개 테스트를 포함한 43개 Node 테스트와 Playwright의 분리된 모바일/PC 브라우저 흐름을 확인했습니다. 브라우저 검사는 모형 Google 서비스를 사용하며 실제 Google CORS/권한/할당량/실기기 동시성 시험을 대신하지 않습니다.
+기존 43개를 포함한 55개 Node 테스트와 Playwright의 분리된 모바일/PC 브라우저 흐름, 화면별 호출 수·비동기 로딩·갱신 경합 검사를 확인했습니다. 브라우저 검사는 모형 Google 서비스를 사용하며 실제 Google CORS/권한/할당량/실기기 동시성 시험을 대신하지 않습니다.
 
-[API 계약·구현 설계](docs/google-apps-script-integration.md)와 [실제 Google 설정·운영 전 점검](apps-script/README.md)을 참고하세요.
+[성능 개선·호출 수·실기기 측정](docs/performance-optimization.md), [API 계약·구현 설계](docs/google-apps-script-integration.md)와 [실제 Google 설정·운영 전 점검](apps-script/README.md)을 참고하세요.

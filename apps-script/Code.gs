@@ -22,8 +22,11 @@ function handle_(method, input) {
   try {
     if (method === 'GET' && !['getConfig','getAvailability'].includes(input.action))
       fail_('METHOD_NOT_ALLOWED', '이 기능은 POST 요청이 필요합니다.');
-    // Reads also acquire this lock to avoid a mixed snapshot during a mutation.
-    var data = withLock_(function() { return dispatch_(input); });
+    // Mutations/auth counters keep the same common lock. Pure reads do not queue behind them.
+    var lockedActions = ['submitRequest', 'cancelRequest', 'decideRequest', 'updateProviderCapacity',
+      'authenticateProvider', 'authenticateAdmin', 'logout', 'findRequest'];
+    var data = lockedActions.includes(input.action)
+      ? withLock_(function() { return dispatch_(input); }) : dispatch_(input);
     return { ok: true, data: data == null ? null : data };
   } catch (error) {
     // Never send/log exception messages, bodies, tokens, spreadsheet IDs or stack traces.
@@ -37,35 +40,42 @@ function dispatch_(input) {
   var session, db;
   // Explicit allowlist: never dynamically call a function named by a client.
   switch (input.action) {
-    case 'getConfig': return config_(database_());
-    case 'getAvailability': return availability_(database_(), input.providerId);
-    case 'submitRequest': return submit_(database_(), input);
+    case 'getConfig': return publicConfig_();
+    case 'getAvailability': return availability_(availabilitySnapshot_(), input.providerId);
+    case 'submitRequest': return submit_(database_(['providers', 'capacities', 'requests']), input);
     case 'findRequest': return publicRow_(verifiedRequest_(database_(), input));
-    case 'cancelRequest': return cancel_(database_(), input);
-    case 'authenticateProvider': return authenticateProvider_(database_(), input);
+    case 'cancelRequest': return cancel_(database_(['requests', 'capacities']), input);
+    case 'authenticateProvider': return authenticateProvider_(database_(['providers']), input);
     case 'authenticateAdmin': return authenticateAdmin_(input);
     case 'logout':
       session = session_(input.token);
       props_().deleteProperty('SESSION_' + session.jti);
       return null;
     case 'getProviderRequests':
-      session = session_(input.token, 'provider'); db = database_();
+      session = session_(input.token, 'provider');
+      db = database_(input.includeConfig === true ? ['providers', 'requests', 'capacities'] : ['providers', 'requests']);
       provider_(db, session.providerId, true);
-      return rows_(db, 'requests').filter(function(r) { return r.providerId === session.providerId; }).map(publicRow_);
+      var requests = rows_(db, 'requests').filter(function(r) { return r.providerId === session.providerId; }).map(publicRow_);
+      // Optional envelope for new adapters; legacy callers still receive the same array.
+      return input.includeConfig === true ? { requests: requests, config: config_(db) } : requests;
     case 'decideRequest':
       session = session_(input.token, 'provider');
-      return decide_(database_(), session, input);
+      return decide_(database_(['providers', 'requests', 'capacities']), session, input);
     case 'updateProviderCapacity':
       session = session_(input.token, 'provider');
-      return capacity_(database_(), session, input);
+      return capacity_(database_(['providers', 'capacities', 'requests']), session, input);
     case 'getAdminRequests':
       session_(input.token, 'admin');
       return rows_(database_(), 'requests').map(publicRow_);
     case 'getAdminOverview':
-      session_(input.token, 'admin'); db = database_();
+      session_(input.token, 'admin');
+      // batchGet alone does not document cross-range transaction isolation. Keep a short
+      // snapshot lock for the admin's mutually consistent requests/history/capacities.
+      db = withLock_(function() { return database_(['requests', 'history', 'providers', 'capacities']); });
       var history = rows_(db, 'history');
       history.sort(function(a, b) { return String(b.occurredAt).localeCompare(String(a.occurredAt)) || b._row - a._row; });
-      return { requests: rows_(db, 'requests').map(publicRow_), history: history.map(publicRow_), providers: config_(db).providers };
+      var config = config_(db);
+      return { requests: rows_(db, 'requests').map(publicRow_), history: history.map(publicRow_), providers: config.providers, config: config };
     default: fail_('UNKNOWN_ACTION', '지원하지 않는 요청입니다.');
   }
 }

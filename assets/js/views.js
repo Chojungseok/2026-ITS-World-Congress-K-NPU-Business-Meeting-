@@ -70,7 +70,7 @@ export function applyPage(providers = PROVIDERS.filter(p => p.active !== false))
     <label class="field">연락처 <b>*</b><input name="phone" type="tel" autocomplete="tel" maxlength="24" placeholder="010-0000-0000" required></label>
     <label class="field full">이메일 <b>*</b><input name="email" type="email" autocomplete="email" maxlength="120" placeholder="name@company.com" required><small>상담 관련 연락과 신청 확인에 사용하는 이메일입니다. 자동 확인 메일은 발송되지 않습니다.</small></label></div></section>
     <section class="form-section"><div class="form-section-title"><span class="section-icon">${icon('users')}</span><h3>상담 파트너 및 시간</h3></div>
-    <fieldset class="provider-fieldset"><legend>상담 희망 NPU 기업 <b>*</b></legend><div class="provider-grid">${providers.map((p, i) => `<label class="provider-option"><input type="radio" name="providerId" value="${e(p.id)}" ${i === 0 ? 'checked' : ''} required><span class="provider-tile">${mark(p)}<span class="radio-indicator"></span><strong>${e(p.name)}</strong><small>${e(p.english)}</small><span class="capacity-label">시간별 정원 <b data-capacity-provider="${e(p.id)}">${capacityRange(p)}</b></span></span></label>`).join('')}</div></fieldset>
+    <fieldset class="provider-fieldset"><legend>상담 희망 NPU 기업 <b>*</b></legend><div class="provider-grid">${providerOptions(providers)}</div></fieldset>
     <fieldset class="time-fieldset"><legend>상담 희망 시간 <b>*</b><span class="legend-extra">10분 단위 · 16:50–17:30</span></legend><div id="time-options" class="time-grid"><p>시간을 불러오는 중입니다.</p></div><p class="field-hint">${icon('info')} 승인대기 신청은 정원에 포함되지 않으며, NPU 기업의 승인 시 확정됩니다.</p></fieldset>
     <label class="field attendees-field">참석인원 <b>*</b><span class="number-input"><input name="attendees" type="number" min="1" max="20" step="1" value="1" required><span>명</span></span></label></section>
     <section class="form-section"><div class="form-section-title"><span class="section-icon">${icon('file')}</span><h3>상담 내용</h3></div><label class="field">상담하고 싶은 내용을 알려주세요 <b>*</b><textarea name="details" rows="5" maxlength="1000" placeholder="도입을 검토 중인 서비스, 기술 과제, 협력하고 싶은 분야 등을 자유롭게 작성해 주세요." required></textarea></label><div class="textarea-footer"><span>구체적으로 작성하면 더욱 알찬 상담을 준비할 수 있습니다.</span><span id="character-count">0 / 1,000</span></div></section>
@@ -112,7 +112,7 @@ export function lookupPage() {
 }
 
 export function requestDetail(row, { cancel = false } = {}) {
-  const p = providerById(row.providerId);
+  const p = { ...providerById(row.providerId), ...(row.providerName ? { name: row.providerName } : {}) };
   return `<div class="detail-header"><span class="eyebrow gray">MEETING REQUEST</span>${badge(row.status)}</div><h2 class="detail-company">${e(row.itsCompany)}</h2><p class="muted detail-id">${e(row.id)}</p><div class="detail-partner">${mark(p)}<div><small>상담 파트너</small><strong>${e(p.name)}</strong></div><div class="detail-time">${icon('clock')} ${e(row.time)}</div></div><dl class="detail-grid"><div><dt>담당자</dt><dd>${e(row.contactName)}</dd></div><div><dt>참석인원</dt><dd>${e(row.attendees)}명</dd></div><div><dt>이메일</dt><dd>${e(row.email)}</dd></div><div><dt>연락처</dt><dd>${e(row.phone)}</dd></div><div><dt>신청일시</dt><dd>${dateText(row.createdAt)}</dd></div></dl><div class="detail-description"><h3>상담내용</h3><p>${e(row.details)}</p></div>${cancel && [STATUS.PENDING, STATUS.CONFIRMED].includes(row.status) ? '<div class="detail-actions"><p>일정이 변경되었나요? 신청을 취소할 수 있습니다.</p><button class="button danger-outline" id="cancel-request">신청 취소</button></div>' : ''}`;
 }
 
@@ -262,7 +262,7 @@ export function homePage() {
 }
 
 
-function privacyConsent() {
+export function privacyConsent() {
   return `<section class="privacy-consent" aria-label="개인정보 수집 동의">
     <div class="privacy-consent-header">
       <label class="consent"><input name="privacyConsent" type="checkbox" required><span>개인정보 수집 동의 <b>*</b></span></label>
@@ -297,3 +297,5 @@ export function adminSlotDetail(provider, time, requests) {
   const cards = list => `<div class="slot-dialog-list">${list.map(row => `<button type="button" class="slot-dialog-card" data-popup-request="${e(row.id)}" aria-label="${e(row.itsCompany)} 상담 상세 보기"><span class="slot-dialog-card-head"><strong>${e(row.itsCompany)}</strong>${badge(row.status)}</span><span class="slot-dialog-contact">${e(row.contactName)} · ${e(row.attendees)}명</span><span class="slot-dialog-id">${e(row.id)}</span><span class="slot-dialog-description">${e(row.details)}</span><span class="matching-detail-link">신청 상세 ${icon('chevron')}</span></button>`).join('')}</div>`;
   return `<span class="eyebrow gray">MEETINGS BY TIME</span><h2 id="dialog-title">${e(provider.name)} 상담 기업</h2><p class="dialog-description">${e(time)}</p><div class="slot-dialog-summary"><span>잔여 <strong>${isSlotOpen(provider, time) ? Math.max(0, capacity - confirmed.length) : 0}건</strong></span><span>확정 <strong>${confirmed.length}건</strong></span><span>정원 <strong>${capacity}건</strong></span></div><section class="slot-dialog-section"><h3>확정 상담 <span>${confirmed.length}건</span></h3>${confirmed.length ? cards(confirmed) : '<p class="slot-dialog-empty">이 시간대에 확정된 상담이 없습니다.</p>'}</section><section class="slot-dialog-section"><h3>승인대기 <span>${pending.length}건 · 정원 미포함</span></h3>${pending.length ? cards(pending) : '<p class="slot-dialog-empty">대기 중인 신청이 없습니다.</p>'}</section>${other.length ? '<details class="slot-dialog-other"><summary>거절·취소된 신청 ' + other.length + '건</summary>' + cards(other) + '</details>' : ''}`;
 }
+
+export function providerOptions(providers) { return providers.map((p, i) => `<label class="provider-option"><input type="radio" name="providerId" value="${e(p.id)}" ${i === 0 ? 'checked' : ''} required><span class="provider-tile">${mark(p)}<span class="radio-indicator"></span><strong>${e(p.name)}</strong><small>${e(p.english)}</small><span class="capacity-label">시간별 정원 <b data-capacity-provider="${e(p.id)}">${capacityRange(p)}</b></span></span></label>`).join(''); }

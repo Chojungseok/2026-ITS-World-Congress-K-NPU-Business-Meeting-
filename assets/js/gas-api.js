@@ -1,7 +1,48 @@
 export class ApiError extends Error {
   constructor(code, message) { super(message); this.name = 'ApiError'; this.code = code; }
 }
-export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45000 } = {}) {
+export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45000, configTtlMs = 30000, now = Date.now } = {}) {
+  // Public config only: never cache requests, tokens, credentials or PII.
+  let cachedConfig = null, configExpiresAt = 0, configPromise = null, configGeneration = 0;
+  const clone = value => JSON.parse(JSON.stringify(value));
+  function invalidateConfig() {
+    configGeneration++; cachedConfig = null; configExpiresAt = 0; configPromise = null;
+  }
+  function rememberConfig(config) {
+    invalidateConfig();
+    cachedConfig = clone(config); configExpiresAt = now() + configTtlMs;
+  }
+  function getConfig() {
+    if (cachedConfig && now() < configExpiresAt) return Promise.resolve(clone(cachedConfig));
+    if (configPromise) return configPromise;
+    const generation = configGeneration;
+    const pending = call('getConfig', {}, 'GET').then(config => {
+      if (generation !== configGeneration) return getConfig();
+      cachedConfig = clone(config); configExpiresAt = now() + configTtlMs;
+      return clone(config);
+    }).finally(() => { if (configPromise === pending) configPromise = null; });
+    configPromise = pending;
+    return pending;
+  }
+  async function providerRequests(token) {
+    const generation = configGeneration;
+    const data = await call('getProviderRequests', { token, includeConfig: true });
+    // Old deployed servers return an array; keep that interface working during rollout.
+    if (Array.isArray(data)) return data;
+    if (data?.config && generation === configGeneration) rememberConfig(data.config);
+    return data.requests;
+  }
+  async function adminOverview(token) {
+    const generation = configGeneration;
+    const data = await call('getAdminOverview', { token });
+    if (data?.config && generation === configGeneration) rememberConfig(data.config);
+    return data;
+  }
+  async function updateCapacity(input) {
+    invalidateConfig();
+    try { return await call('updateProviderCapacity', input); }
+    finally { invalidateConfig(); } // Also discard after a possibly committed/lost response.
+  }
   async function call(action, payload = {}, method = 'POST') {
     if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url || ''))
       throw new ApiError('SETUP_REQUIRED', '운영 서버 URL을 설정해 주세요. apps-script/README.md를 참고하세요.');
@@ -39,18 +80,19 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
   }
   return Object.freeze({
     mode: 'gas',
-    getConfig: () => call('getConfig', {}, 'GET'),
+    getConfig,
+    invalidateConfig,
     getAvailability: providerId => call('getAvailability', { providerId }, 'GET'),
     submitRequest: input => call('submitRequest', input),
     findRequest: async input => call('findRequest', identity(input)),
     cancelRequest: async input => call('cancelRequest', identity(input)),
     authenticateProvider: input => call('authenticateProvider', input),
     authenticateAdmin: input => call('authenticateAdmin', input),
-    updateProviderCapacity: input => call('updateProviderCapacity', input),
+    updateProviderCapacity: updateCapacity,
     logout: token => call('logout', { token }),
-    getProviderRequests: token => call('getProviderRequests', { token }),
+    getProviderRequests: providerRequests,
     decideRequest: input => call('decideRequest', input),
     getAdminRequests: token => call('getAdminRequests', { token }),
-    getAdminOverview: token => call('getAdminOverview', { token })
+    getAdminOverview: adminOverview
   });
 }

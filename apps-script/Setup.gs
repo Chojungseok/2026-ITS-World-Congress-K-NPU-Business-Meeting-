@@ -14,6 +14,7 @@ function setupSystem() {
       properties.setProperty('SHEET_ID', db.getId());
     }
     db.setSpreadsheetTimeZone('Asia/Seoul');
+    var context = databaseContext_(db.getId(), db);
     Object.keys(KN.schemas).forEach(function(type) {
       var schema = KN.schemas[type];
       var sheet = db.getSheetByName(schema.name) || db.insertSheet(schema.name);
@@ -21,10 +22,10 @@ function setupSystem() {
         sheet.getRange(1, 1, 1, schema.headers.length).setValues([schema.headers]);
         sheet.setFrozenRows(1);
       }
-      table_(db, type); // Refuse a changed header instead of overwriting existing data.
+      table_(context, type); // Refuse a changed header instead of overwriting existing data.
     });
     SpreadsheetApp.flush();
-    var existingProviders = rows_(db, 'providers'), existingSlots = rows_(db, 'capacities');
+    var existingProviders = rows_(context, 'providers'), existingSlots = rows_(context, 'capacities');
     var changes = [], now = iso_();
     KN.providers.forEach(function(provider) {
       if (!existingProviders.some(function(p) { return p.id === provider.id; }))
@@ -38,7 +39,7 @@ function setupSystem() {
         } });
       });
     });
-    writeBatch_(db, changes);
+    writeBatch_(context, changes);
     if (!properties.getProperty('TOKEN_SIGNING_SECRET'))
       properties.setProperty('TOKEN_SIGNING_SECRET', Utilities.getUuid() + Utilities.getUuid());
     if (!properties.getProperty('PRIVACY_NOTICE_VERSION'))
@@ -47,4 +48,10 @@ function setupSystem() {
     console.log('공유 설정이 제한됨(Restricted)인지 직접 확인하고 configureAuthentication()을 실행하세요.');
     return db.getUrl();
   });
+}
+
+// Editor-only: run after manual NPU/operating-status edits. No public API route.
+function refreshPublicConfig() {
+  withLock_(function() { invalidatePublicConfig_(); });
+  console.log('공개 설정 캐시를 갱신했습니다.');
 }

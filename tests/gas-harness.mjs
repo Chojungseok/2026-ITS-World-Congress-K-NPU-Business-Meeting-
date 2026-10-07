@@ -3,20 +3,20 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { randomUUID, createHmac } from 'node:crypto';
-export function createHarness() {
+export function createHarness({ sources = {} } = {}) {
   const properties = new Map(), books = new Map(), cache = new Map();
   let locked = false, clock = Date.now(), nextSheet = 1, created = 0, failBatch = false, beforeBatch = null;
-  const counters = { locks: 0, batches: 0 };
+  const counters = { locks: 0, batches: 0, batchGets: 0, rangeReads: 0, headerReads: 0, lastRows: 0, opens: 0 };
   class Sheet {
     constructor(name) { this.name = name; this.id = nextSheet++; this.data = []; this.maxRows = 1000; }
     getName() { return this.name; }
     getSheetId() { return this.id; }
     getMaxRows() { return this.maxRows; }
-    getLastRow() { return this.data.length; }
+    getLastRow() { counters.lastRows++; return this.data.length; }
     setFrozenRows() {}
     getRange(row, col, height, width) {
       return {
-        getValues: () => Array.from({length:height}, (_, y) => Array.from({length:width}, (_, x) => this.data[row+y-1]?.[col+x-1] ?? '')),
+        getValues: () => { counters.rangeReads++; if (row === 1 && height === 1) counters.headerReads++; return Array.from({length:height}, (_, y) => Array.from({length:width}, (_, x) => this.data[row+y-1]?.[col+x-1] ?? '')); },
         setValues: values => values.forEach((line,y) => { this.data[row+y-1] ||= []; line.forEach((v,x) => { this.data[row+y-1][col+x-1]=v; }); })
       };
     }
@@ -57,10 +57,24 @@ export function createHarness() {
     },
     SpreadsheetApp: {
       create: () => { created++; const book=new Book(); books.set(book.id,book); return book; },
-      openById: id => { if(!books.has(id)) throw Error('Private DB ID / stack must never escape'); return books.get(id); },
+      openById: id => { counters.opens++; if(!books.has(id)) throw Error('Private DB ID / stack must never escape'); return books.get(id); },
       flush() {}
     },
-    Sheets: { Spreadsheets: { batchUpdate: (body,id) => {
+    Sheets: { Spreadsheets: { Values: { batchGet: (id, options) => {
+      counters.batchGets++;
+      const book = books.get(id);
+      if (!book) throw Error('Unknown private DB');
+      const valueRanges = options.ranges.map(range => {
+        const match = /^'([^']+)'!([A-Z]+)([0-9]*):([A-Z]+)([0-9]*)$/.exec(range);
+        if (!match) throw Error('Unsupported A1 range: ' + range);
+        const sheet = book.getSheetByName(match[1]);
+        if (!sheet) throw Error('Unknown sheet');
+        const column = letters => [...letters].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0)-1;
+        const from = Number(match[3] || 1)-1, until = Number(match[5] || sheet.data.length);
+        return { range, values: structuredClone(sheet.data.slice(from,until).map(row=>row.slice(column(match[2]),column(match[4])+1))) };
+      });
+      return { valueRanges };
+    } }, batchUpdate: (body,id) => {
       if(!locked) throw Error('Write outside common lock!');
       counters.batches++;
       if(beforeBatch) { const hook=beforeBatch; beforeBatch=null; hook(); }
@@ -82,7 +96,7 @@ export function createHarness() {
     ContentService: { MimeType: { JSON:'application/json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) }
   });
   for(const name of ['Config','Database','Setup','Auth','Services','Code'])
-    vm.runInContext(fs.readFileSync(new URL('../apps-script/'+name+'.gs',import.meta.url),'utf8'),context,{filename:name+'.gs'});
+    vm.runInContext(sources[name] ?? fs.readFileSync(new URL('../apps-script/'+name+'.gs',import.meta.url),'utf8'),context,{filename:name+'.gs'});
   const call = (action,input={},method='POST') => JSON.parse(JSON.stringify(context.handle_(method,{...input,action})));
   const value = result => { if(!result.ok) throw Object.assign(Error(result.error.message), {code:result.error.code}); return result.data; };
   const credentials = Object.fromEntries(['deepx','mobilint','furiosa','rebellions'].map(id=>[id,randomUUID()]));

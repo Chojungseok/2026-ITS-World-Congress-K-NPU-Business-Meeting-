@@ -13,7 +13,7 @@ function submit_(db, input) {
   var email = email_(input.email), details = text_(input.details, 1000, '상담내용');
   var attendees = integer_(input.attendees, 1, 20);
   if (input.privacyConsent !== true) fail_('CONSENT_REQUIRED', '개인정보 수집·이용 동의가 필요합니다.');
-  var privacy = config_(db).privacy;
+  var privacy = privacy_();
   if (input.privacyNoticeVersion !== privacy.version)
     fail_('NOTICE_CHANGED', '개인정보 안내가 변경되었습니다. 페이지를 새로고침하고 다시 확인해 주세요.');
   var provider = provider_(db, input.providerId, true), slot = slot_(db, provider.id, input.time);

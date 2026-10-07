@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { STATUS, STORAGE_KEY, providerById, applyPublicConfig, PRIVACY_NOTICE } from './config.js';
+import { STATUS, STORAGE_KEY, TIMES, providerById, applyPublicConfig, PRIVACY_NOTICE } from './config.js';
 import * as view from './views.js';
 import { RUNTIME_CONFIG } from './runtime-config.js';
 import { readSession, saveSession, clearSession } from './session-store.js';
@@ -23,6 +23,11 @@ let lookupRow = null;
 let toastTimer;
 let renderVersion = 0;
 let availabilityVersion = 0;
+let refreshPromise = null;
+let refreshVersion = -1;
+let dataGeneration = 0;
+let providerViewConfig = null;
+let capacityViewDeferred = false;
 const titles = { home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
 
 function toast(message, isError = false) {
@@ -75,20 +80,59 @@ function summary() {
   $('#selection-summary').innerHTML = view.selectionSummary(data.get('providerId'), data.get('time'), data.get('attendees'));
   $('#character-count').textContent = (data.get('details') || '').length.toLocaleString('ko-KR') + ' / 1,000';
 }
+
+function showTimes(form, slots) {
+  const providerId = form.elements.providerId.value;
+  const provider = providerById(providerId);
+  if (provider) {
+    const capacities = Object.fromEntries(slots.map(slot => [slot.time, slot.capacity]));
+    const label = $('[data-capacity-provider="' + providerId + '"]', form);
+    if (label) label.textContent = view.capacityRange({ ...provider, capacities });
+  }
+  const html = view.timeOptions(slots, new FormData(form).get('time'));
+  if ($('#time-options').innerHTML !== html) $('#time-options').innerHTML = html;
+  $('button[type="submit"]', form).disabled = form.dataset.ready !== 'true';
+  summary();
+}
 async function loadTimes() {
   const form = $('#application-form');
-  if (!form) return;
+  if (!form || form.dataset.ready !== 'true') return;
   const version = ++availabilityVersion;
-  const data = new FormData(form);
-    const [slots, config] = await Promise.all([api.getAvailability(data.get('providerId')), api.getConfig()]);
+  const slots = await api.getAvailability(form.elements.providerId.value);
   if (version !== availabilityVersion || !form.isConnected) return;
-  if (api.mode === 'gas' && config.privacy.version !== PRIVACY_NOTICE.version) throw new Error('개인정보 안내가 변경되었습니다. 새로고침 후 다시 확인해 주세요.');
-  for (const provider of config.providers) {
-    const label = $('[data-capacity-provider="' + provider.id + '"]', form);
-    if (label) label.textContent = view.capacityRange(provider);
-  }
-  $('#time-options').innerHTML = view.timeOptions(slots, new FormData(form).get('time'));
+  showTimes(form, slots);
+}
+async function initializeApplication() {
+  const form = $('#application-form'), version = ++availabilityVersion;
+  const initialProvider = form.elements.providerId.value;
+  form.dataset.ready = 'false';
+  $('button[type="submit"]', form).disabled = true;
+  form.elements.privacyConsent.disabled = true;
+  form.querySelectorAll('[name="providerId"]').forEach(input => { input.disabled = true; });
+  $('#time-options').textContent = '상담 가능 시간을 불러오는 중…';
+  // Fetch both in parallel. A failed/inactive initial provider can be replaced by config.
+  const availability = api.getAvailability(initialProvider).then(slots => ({ slots }), error => ({ error }));
+  const config = await api.getConfig();
+  if (!form.isConnected || version !== availabilityVersion) return;
+  if (api.mode === 'gas') applyPublicConfig(config);
+  const providers = config.providers.filter(provider => provider.active !== false);
+  $('.provider-grid', form).innerHTML = view.providerOptions(providers);
+  const selected = [...form.querySelectorAll('[name="providerId"]')].find(input => input.value === initialProvider);
+  if (selected) selected.checked = true;
+  const notice = document.createElement('template');
+  notice.innerHTML = view.privacyConsent();
+  $('#privacy-details').innerHTML = notice.content.querySelector('#privacy-details').innerHTML;
+  if (form.dataset.noticeVersion && form.dataset.noticeVersion !== PRIVACY_NOTICE.version) form.elements.privacyConsent.checked = false;
+  form.dataset.noticeVersion = PRIVACY_NOTICE.version;
+  form.elements.privacyConsent.disabled = false;
+  form.dataset.ready = 'true';
+  if (!providers.length) throw new Error('현재 신청 가능한 NPU 기업이 없습니다.');
   summary();
+  const result = await availability;
+  if (!form.isConnected || version !== availabilityVersion) return;
+  if (form.elements.providerId.value !== initialProvider) return loadTimes();
+  if (result.error) throw result.error;
+  showTimes(form, result.slots);
 }
 function bindApply() {
   const form = $('#application-form');
@@ -109,7 +153,7 @@ function bindApply() {
     const values = Object.fromEntries(new FormData(form));
     values.consent = form.elements.consent.checked;
     values.privacyConsent = form.elements.privacyConsent.checked;
-    values.privacyNoticeVersion = PRIVACY_NOTICE.version;
+    values.privacyNoticeVersion = form.dataset.noticeVersion || PRIVACY_NOTICE.version;
     busy($('button[type="submit"]', form), async () => {
       const record = await api.submitRequest(values);
       form.reset();
@@ -213,7 +257,8 @@ function bindCapacity() {
       ).map(other => [other.elements.time.value, other.elements.capacity.value]);
       busy($('button[type="submit"]', form), async () => {
         await api.updateProviderCapacity({ token: providerToken, time, capacity: form.elements.capacity.value });
-        await renderRoute(false);
+        form.elements.capacity.defaultValue = form.elements.capacity.value;
+        await refresh({ force: true });
         for (const [draftTime, value] of drafts) {
           const nextForm = [...document.querySelectorAll('.slot-capacity-form')].find(other => other.elements.time.value === draftTime);
           if (nextForm) nextForm.elements.capacity.value = value;
@@ -311,7 +356,7 @@ main.addEventListener('click', event => {
       label: approved ? '승인하기' : '거절하기', danger: !approved,
       action: async () => {
         await api.decideRequest({ token: providerToken, id: row.id, decision: decisionButton.dataset.decision });
-        await renderRoute(false);
+        await refresh({ force: true });
         toast(approved ? '상담 매칭을 확정했습니다.' : '상담 신청을 거절했습니다.');
       }
     });
@@ -345,71 +390,163 @@ async function renderRoute(focus = true) {
   $('#sidebar').classList.remove('is-open');
   $('#menu-toggle').setAttribute('aria-expanded', 'false');
   $('#menu-toggle').setAttribute('aria-label', '메뉴 열기');
+  main.dataset.loading = 'true';
   try {
-    if (api.mode === 'gas') {
-      applyPublicConfig(await api.getConfig());
-      if (version !== renderVersion) return;
+    if (route === 'home') main.innerHTML = view.homePage();
+    if (route === 'apply') {
+      main.innerHTML = view.applyPage(); bindApply();
+      // Form fields are usable before GAS responds; submission waits for config and slots.
+      await initializeApplication();
     }
-    if (route === 'home') { main.innerHTML = view.homePage(); }
-    if (route === 'apply') { main.innerHTML = view.applyPage(); bindApply(); await loadTimes(); }
     if (route === 'lookup') {
-      if (lookupRow) lookupRow = await api.findRequest({ id: lookupRow.id, email: lookupRow.email });
-      if (version !== renderVersion) return;
       main.innerHTML = view.lookupPage(); bindLookup();
+      if (lookupRow) await refresh();
     }
     if (route === 'npu' || route === 'matching') {
-      if (!providerToken) { main.innerHTML = view.providerLogin(); bindProviderLogin(); }
-      else {
-        const [rows, config] = await Promise.all([api.getProviderRequests(providerToken), api.getConfig()]);
-        if (version !== renderVersion) return;
-        currentRows = rows;
-        const provider = config.providers.find(p => p.id === activeProvider);
-        if (route === 'matching') {
-          main.innerHTML = view.providerMatchingPage(activeProvider, rows, provider);
-          $('#refresh-matching').onclick = () => refresh().catch(error => toast(error.message, true));
-        } else {
-          main.innerHTML = view.providerPage(activeProvider, rows, providerFilter, provider);
-          bindProvider();
+      if (!providerToken) {
+        main.innerHTML = view.providerLogin(); bindProviderLogin();
+        if (api.mode === 'gas') {
+          const config = await api.getConfig();
+          if (version !== renderVersion) return;
+          applyPublicConfig(config);
+          const select = $('#provider-login-form [name="providerId"]'), selected = select.value;
+          select.innerHTML = view.options(config.providers.filter(p => p.active !== false), '기업을 선택하세요');
+          select.value = selected;
         }
-        bindCapacity();
+      } else {
+        main.innerHTML = loadingPanel('NPU 상담 현황', '상담 신청을 불러오는 중…');
+        await loadProviderView(version, false);
       }
     }
     if (route === 'admin') {
       if (!adminToken) { main.innerHTML = view.adminLogin(); bindAdminLogin(); }
       else {
-        const savedHistoryFilters = $('#history-filters') ? Object.fromEntries(new FormData($('#history-filters'))) : null;
-        const overview = await api.getAdminOverview(adminToken);
-        if (version !== renderVersion) return;
-        currentRows = overview.requests;
-        currentHistory = overview.history;
-        currentProviders = overview.providers;
-        main.innerHTML = view.adminPage(overview.requests, overview.providers, overview.history);
-        bindAdmin(savedHistoryFilters);
-        if (dialog.open && activeAdminSlot) renderAdminSlot();
+        main.innerHTML = loadingPanel('비즈매칭 운영 대시보드', '운영 현황을 불러오는 중…');
+        await loadAdminView(version, false);
       }
     }
     if (focus && version === renderVersion) { main.focus({ preventScroll: true }); window.scrollTo({ top: 0 }); }
   } catch (error) {
     if (version !== renderVersion) return;
-    if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
-      if (route === 'admin') { adminToken = null; clearSession('admin'); }
-      else { providerToken = null; activeProvider = ''; clearSession('provider'); }
-      currentRows = []; currentHistory = []; dialog.close();
-      toast(error.message, true); return renderRoute(false);
+    if (await recoverSession(error)) return;
+    // Preserve entered application data on a network/config failure.
+    if (route === 'apply' && $('#application-form')) {
+      errorAt('#application-error', error);
+      let retry = $('#retry-application');
+      if (!retry) {
+        retry = document.createElement('button'); retry.id = 'retry-application';
+        retry.type = 'button'; retry.className = 'button secondary'; retry.textContent = '상담 시간 다시 불러오기';
+        $('#application-error').after(retry);
+      }
+      retry.onclick = () => busy(retry, async () => { await initializeApplication(); retry.remove(); }, '#application-error');
+    } else {
+      main.innerHTML = '<section class="panel error-panel"><h1>화면을 불러오지 못했습니다</h1><p role="alert">' + view.escapeHtml(error.message) + '</p><button class="button primary" id="retry-page">다시 시도</button></section>';
+      $('#retry-page').onclick = () => renderRoute(false);
     }
-    main.innerHTML = '<section class="panel error-panel"><h1>화면을 불러오지 못했습니다</h1><p role="alert">' + view.escapeHtml(error.message) + '</p><button class="button primary" id="retry-page">다시 시도</button></section>';
-    $('#retry-page').onclick = () => renderRoute(false);
+  } finally { if (version === renderVersion) main.dataset.loading = 'false'; }
+}
+
+
+function loadingPanel(title, message) {
+  return view.pageHeading('BUSINESS MATCHING', title, message) +
+    '<section class="panel" role="status" style="padding:24px">' + view.escapeHtml(message) + '</section>';
+}
+function sameData(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function replaceRegion(selector, template) {
+  const current = $(selector, main), next = template.content.querySelector(selector);
+  if (current && next && current.outerHTML !== next.outerHTML) { current.replaceWith(next); return true; }
+  return false;
+}
+function capacityEditing() {
+  return !!document.activeElement?.closest('.capacity-settings') ||
+    [...document.querySelectorAll('.slot-capacity-form [name="capacity"]')].some(input => input.value !== input.defaultValue);
+}
+async function loadProviderView(version, partial) {
+  const token = providerToken, id = activeProvider, page = route, generation = dataGeneration;
+  const rows = await api.getProviderRequests(token);
+  if (version !== renderVersion || generation !== dataGeneration || token !== providerToken || route !== page) return;
+  // New server includes fresh public config; adapter seeds its cache without another GET.
+  const config = await api.getConfig();
+  if (version !== renderVersion || generation !== dataGeneration || token !== providerToken || id !== activeProvider || route !== page) return;
+  if (api.mode === 'gas') applyPublicConfig(config);
+  const provider = config.providers.find(p => p.id === id);
+  if (!provider) throw new Error('기업 설정을 확인해 주세요.');
+  const unchanged = sameData(currentRows, rows) && sameData(providerViewConfig, provider);
+  currentRows = rows; providerViewConfig = provider;
+  $('.profile-name').textContent = provider.name;
+  if (partial && unchanged && (!capacityViewDeferred || capacityEditing())) return;
+  const html = page === 'matching' ? view.providerMatchingPage(id, rows, provider) : view.providerPage(id, rows, providerFilter, provider);
+  if (!partial) {
+    main.innerHTML = html;
+    if (page === 'matching') $('#refresh-matching').onclick = () => refresh().catch(error => toast(error.message, true));
+    else bindProvider();
+    bindCapacity(); capacityViewDeferred = false;
+  } else {
+    const template = document.createElement('template'); template.innerHTML = html;
+    for (const selector of ['.stats-grid', '.slot-overview', '#provider-requests', '.request-section .count-pill', '.matching-panel'])
+      replaceRegion(selector, template);
+    if (capacityEditing()) capacityViewDeferred = true;
+    else { if (replaceRegion('.capacity-settings', template)) bindCapacity(); capacityViewDeferred = false; }
   }
 }
-async function refresh() {
-  if (route === 'apply') await loadTimes();
-  else if (route === 'lookup' && lookupRow) {
-    const original = lookupRow;
-    const latest = await api.findRequest({ id: original.id, email: original.email });
-    if (route !== 'lookup' || lookupRow !== original) return;
-    lookupRow = latest;
-    showLookup(lookupRow);
-  } else if (((route === 'npu' || route === 'matching') && providerToken) || (route === 'admin' && adminToken)) await renderRoute(false);
+async function loadAdminView(version, partial) {
+  const token = adminToken, generation = dataGeneration, overview = await api.getAdminOverview(token);
+  if (version !== renderVersion || generation !== dataGeneration || token !== adminToken || route !== 'admin') return;
+  // Legacy server fallback derives public times from the already-returned capacities.
+  if (api.mode === 'gas') applyPublicConfig(overview.config || {
+    providers: overview.providers,
+    times: [...new Set(overview.providers.flatMap(p => Object.keys(p.capacities || {})))].sort().length
+      ? [...new Set(overview.providers.flatMap(p => Object.keys(p.capacities || {})))].sort() : TIMES
+  });
+  const unchanged = sameData(currentRows, overview.requests) && sameData(currentHistory, overview.history) && sameData(currentProviders, overview.providers);
+  currentRows = overview.requests; currentHistory = overview.history; currentProviders = overview.providers;
+  if (partial && unchanged) return;
+  if (!partial) {
+    main.innerHTML = view.adminPage(currentRows, currentProviders, currentHistory); bindAdmin();
+  } else {
+    const template = document.createElement('template');
+    template.innerHTML = view.adminPage(currentRows, currentProviders, currentHistory);
+    for (const selector of ['.stats-grid', '.progress-panel', '.history-panel .panel-heading .count-pill'])
+      replaceRegion(selector, template);
+    for (const name of ['provider', 'time']) {
+      const select = $('#history-filters').elements[name], value = select.value;
+      const next = template.content.querySelector('#history-filters [name="' + name + '"]');
+      if (select.innerHTML !== next.innerHTML) { select.innerHTML = next.innerHTML; select.value = value; if (!select.value) select.value = ''; }
+    }
+    filterHistory();
+  }
+  if (dialog.open && activeAdminSlot) renderAdminSlot();
+}
+async function recoverSession(error) {
+  if (!['UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)) return false;
+  if (route === 'admin') { adminToken = null; clearSession('admin'); }
+  else { providerToken = null; activeProvider = ''; clearSession('provider'); }
+  currentRows = []; currentHistory = []; dialog.close();
+  toast(error.message, true); await renderRoute(false); return true;
+}
+function refresh({ force = false } = {}) {
+  if (refreshPromise && refreshVersion === renderVersion && !force) return refreshPromise;
+  if (force) dataGeneration++;
+  const version = renderVersion;
+  refreshVersion = version;
+  const pending = (async () => {
+    if (route === 'apply') await loadTimes();
+    else if (route === 'lookup' && lookupRow) {
+      const original = lookupRow, latest = await api.findRequest({ id: original.id, email: original.email });
+      if (version !== renderVersion || route !== 'lookup' || lookupRow !== original) return;
+      lookupRow = latest;
+      if (!sameData(original, latest)) showLookup(lookupRow);
+    } else if ((route === 'npu' || route === 'matching') && providerToken) await loadProviderView(version, true);
+    else if (route === 'admin' && adminToken) await loadAdminView(version, true);
+  })().catch(async error => {
+    if (version !== renderVersion) return;
+    if (!await recoverSession(error)) throw error;
+  }).finally(() => { if (refreshPromise === pending) refreshPromise = null; });
+  refreshPromise = pending; return pending;
+}
+function needsPolling() {
+  return route === 'apply' || (route === 'lookup' && !!lookupRow) ||
+    (['npu', 'matching'].includes(route) && !!providerToken) || (route === 'admin' && !!adminToken);
 }
 $('#menu-toggle').onclick = () => {
   const open = $('#sidebar').classList.toggle('is-open');
@@ -435,7 +572,7 @@ window.addEventListener('storage', event => {
   if (api.mode === 'mock' && (event.key === STORAGE_KEY || event.key === null)) refresh().catch(error => toast(error.message, true));
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') refresh().catch(error => toast(error.message, true));
+  if (document.visibilityState === 'visible' && needsPolling() && main.dataset.loading !== 'true') refresh().catch(error => toast(error.message, true));
 });
 renderRoute(false);
 
@@ -446,7 +583,7 @@ $('#provider-logout').onclick = async () => {
 };
 let polling = false;
 if (api.mode === 'gas') setInterval(async () => {
-  if (polling || document.visibilityState !== 'visible' || document.querySelector('[aria-busy="true"]')) return;
+  if (!needsPolling() || polling || main.dataset.loading === 'true' || document.visibilityState !== 'visible' || document.querySelector('[aria-busy="true"]')) return;
   const editing = document.activeElement?.matches('input,select,textarea');
   const dirty = [...document.querySelectorAll('.slot-capacity-form input[name="capacity"]')].some(input => input.value !== input.defaultValue);
   if (route !== 'apply' && (editing || dirty || (dialog.open && !activeAdminSlot))) return;
