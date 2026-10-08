@@ -1,0 +1,1021 @@
+{
+  "baseline": "f0a4c3fb472b38b3af0efcb205d1bbb40b6f8ed0",
+  "phase": "features",
+  "fixture": "200 synthetic pending applications + 200 audit records; desktop 1440x1000; 3 samples/route; fixed 100ms simulated delay per API; no real GAS requests",
+  "before": {
+    "home": {
+      "staticMs": 141.3,
+      "readyMs": 296.3,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 952,
+          "readyMs": 1115,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 135,
+          "readyMs": 292,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 141.3,
+          "readyMs": 296.3,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "apply": {
+      "staticMs": 361.5,
+      "readyMs": 482.6,
+      "gasRequests": 2,
+      "actions": [
+        "getAvailability",
+        "getConfig"
+      ],
+      "sheetBatchReads": 1,
+      "sheetRangeReads": 0,
+      "payloadBytes": 1642,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 362.9,
+          "readyMs": 553.4,
+          "gasRequests": 2,
+          "actions": [
+            "getAvailability",
+            "getConfig"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1642,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 356.9,
+          "readyMs": 476.2,
+          "gasRequests": 2,
+          "actions": [
+            "getAvailability",
+            "getConfig"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1642,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 361.5,
+          "readyMs": 482.6,
+          "gasRequests": 2,
+          "actions": [
+            "getAvailability",
+            "getConfig"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1642,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "npu-login": {
+      "staticMs": 148.5,
+      "readyMs": 355.8,
+      "gasRequests": 1,
+      "actions": [
+        "getConfig"
+      ],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 1350,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 148.5,
+          "readyMs": 355.8,
+          "gasRequests": 1,
+          "actions": [
+            "getConfig"
+          ],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1350,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 139.6,
+          "readyMs": 335.7,
+          "gasRequests": 1,
+          "actions": [
+            "getConfig"
+          ],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1350,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 156.2,
+          "readyMs": 359.4,
+          "gasRequests": 1,
+          "actions": [
+            "getConfig"
+          ],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1350,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "npu-requests": {
+      "staticMs": 41.2,
+      "readyMs": 400,
+      "gasRequests": 2,
+      "actions": [
+        "authenticateProvider",
+        "getProviderRequests"
+      ],
+      "sheetBatchReads": 2,
+      "sheetRangeReads": 0,
+      "payloadBytes": 103927,
+      "mainReplacements": 2,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 41.2,
+          "readyMs": 419.8,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 45.2,
+          "readyMs": 400,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 33.4,
+          "readyMs": 392.3,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "matching": {
+      "staticMs": 33.4,
+      "readyMs": 364.3,
+      "gasRequests": 2,
+      "actions": [
+        "authenticateProvider",
+        "getProviderRequests"
+      ],
+      "sheetBatchReads": 2,
+      "sheetRangeReads": 0,
+      "payloadBytes": 103927,
+      "mainReplacements": 2,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 44.4,
+          "readyMs": 364.3,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 33.4,
+          "readyMs": 377.9,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 32.7,
+          "readyMs": 354.9,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "admin-login": {
+      "staticMs": 141.3,
+      "readyMs": 304.6,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 141.3,
+          "readyMs": 304.6,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 147,
+          "readyMs": 306.5,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 135.8,
+          "readyMs": 287.4,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "admin-dashboard": {
+      "staticMs": 34.9,
+      "readyMs": 448,
+      "gasRequests": 2,
+      "actions": [
+        "authenticateAdmin",
+        "getAdminOverview"
+      ],
+      "sheetBatchReads": 1,
+      "sheetRangeReads": 0,
+      "payloadBytes": 177486,
+      "mainReplacements": 2,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 45,
+          "readyMs": 477.9,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 177486,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 34.9,
+          "readyMs": 441.6,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 177486,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 30.7,
+          "readyMs": 448,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 177486,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "find-id": {
+      "staticMs": 140.5,
+      "readyMs": 303.2,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 143.4,
+          "readyMs": 305.5,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 138.6,
+          "readyMs": 295.7,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 140.5,
+          "readyMs": 303.2,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    },
+    "brochures": {
+      "staticMs": 139.1,
+      "readyMs": 328.6,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 162179,
+      "samples": [
+        {
+          "staticMs": 136.5,
+          "readyMs": 318.1,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 139.1,
+          "readyMs": 328.6,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        },
+        {
+          "staticMs": 143.3,
+          "readyMs": 332.3,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 162179
+        }
+      ]
+    }
+  },
+  "after": {
+    "home": {
+      "staticMs": 136.9,
+      "readyMs": 302.1,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 195568,
+      "samples": [
+        {
+          "staticMs": 132.2,
+          "readyMs": 296.2,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 173.5,
+          "readyMs": 364.9,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 136.9,
+          "readyMs": 302.1,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        }
+      ]
+    },
+    "apply": {
+      "staticMs": 358.3,
+      "readyMs": 476.6,
+      "gasRequests": 2,
+      "actions": [
+        "getAvailability",
+        "getConfig"
+      ],
+      "sheetBatchReads": 1,
+      "sheetRangeReads": 0,
+      "payloadBytes": 1642,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 215139,
+      "samples": [
+        {
+          "staticMs": 359.5,
+          "readyMs": 475.1,
+          "gasRequests": 2,
+          "actions": [
+            "getAvailability",
+            "getConfig"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1642,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 358.3,
+          "readyMs": 476.6,
+          "gasRequests": 2,
+          "actions": [
+            "getAvailability",
+            "getConfig"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1642,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 353.7,
+          "readyMs": 488.2,
+          "gasRequests": 2,
+          "actions": [
+            "getAvailability",
+            "getConfig"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1642,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        }
+      ]
+    },
+    "npu-login": {
+      "staticMs": 127.4,
+      "readyMs": 326.5,
+      "gasRequests": 1,
+      "actions": [
+        "getConfig"
+      ],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 1350,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 215139,
+      "samples": [
+        {
+          "staticMs": 127.4,
+          "readyMs": 326.5,
+          "gasRequests": 1,
+          "actions": [
+            "getConfig"
+          ],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1350,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 150.7,
+          "readyMs": 353,
+          "gasRequests": 1,
+          "actions": [
+            "getConfig"
+          ],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1350,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 126.9,
+          "readyMs": 325.4,
+          "gasRequests": 1,
+          "actions": [
+            "getConfig"
+          ],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 1350,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        }
+      ]
+    },
+    "npu-requests": {
+      "staticMs": 46.1,
+      "readyMs": 400.5,
+      "gasRequests": 2,
+      "actions": [
+        "authenticateProvider",
+        "getProviderRequests"
+      ],
+      "sheetBatchReads": 2,
+      "sheetRangeReads": 0,
+      "payloadBytes": 103927,
+      "mainReplacements": 2,
+      "pdfInitialRequests": 0,
+      "staticBytes": 215139,
+      "samples": [
+        {
+          "staticMs": 65.6,
+          "readyMs": 430.3,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 46.1,
+          "readyMs": 400.5,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 32.9,
+          "readyMs": 394,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        }
+      ]
+    },
+    "matching": {
+      "staticMs": 35.1,
+      "readyMs": 366.1,
+      "gasRequests": 2,
+      "actions": [
+        "authenticateProvider",
+        "getProviderRequests"
+      ],
+      "sheetBatchReads": 2,
+      "sheetRangeReads": 0,
+      "payloadBytes": 103927,
+      "mainReplacements": 2,
+      "pdfInitialRequests": 0,
+      "staticBytes": 215139,
+      "samples": [
+        {
+          "staticMs": 47.2,
+          "readyMs": 364.4,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 35.1,
+          "readyMs": 383.1,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 33.7,
+          "readyMs": 366.1,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchReads": 2,
+          "sheetRangeReads": 0,
+          "payloadBytes": 103927,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        }
+      ]
+    },
+    "admin-login": {
+      "staticMs": 128.4,
+      "readyMs": 300.6,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 195568,
+      "samples": [
+        {
+          "staticMs": 129.9,
+          "readyMs": 300.6,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 128.4,
+          "readyMs": 302.5,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 127,
+          "readyMs": 300.4,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        }
+      ]
+    },
+    "admin-dashboard": {
+      "staticMs": 35.6,
+      "readyMs": 425.2,
+      "gasRequests": 2,
+      "actions": [
+        "authenticateAdmin",
+        "getAdminOverview"
+      ],
+      "sheetBatchReads": 1,
+      "sheetRangeReads": 0,
+      "payloadBytes": 177486,
+      "mainReplacements": 2,
+      "pdfInitialRequests": 0,
+      "staticBytes": 215139,
+      "samples": [
+        {
+          "staticMs": 36,
+          "readyMs": 425.2,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 177486,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 35.6,
+          "readyMs": 420.9,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 177486,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        },
+        {
+          "staticMs": 33.1,
+          "readyMs": 434.2,
+          "gasRequests": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchReads": 1,
+          "sheetRangeReads": 0,
+          "payloadBytes": 177486,
+          "mainReplacements": 2,
+          "pdfInitialRequests": 0,
+          "staticBytes": 215139
+        }
+      ]
+    },
+    "find-id": {
+      "staticMs": 128.9,
+      "readyMs": 305.4,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 195568,
+      "samples": [
+        {
+          "staticMs": 128.9,
+          "readyMs": 305.4,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 128.9,
+          "readyMs": 303,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 130.3,
+          "readyMs": 311.4,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        }
+      ]
+    },
+    "brochures": {
+      "staticMs": 130,
+      "readyMs": 300.4,
+      "gasRequests": 0,
+      "actions": [],
+      "sheetBatchReads": 0,
+      "sheetRangeReads": 0,
+      "payloadBytes": 0,
+      "mainReplacements": 1,
+      "pdfInitialRequests": 0,
+      "staticBytes": 195568,
+      "samples": [
+        {
+          "staticMs": 126.5,
+          "readyMs": 295.7,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 130.4,
+          "readyMs": 300.4,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        },
+        {
+          "staticMs": 130,
+          "readyMs": 306.4,
+          "gasRequests": 0,
+          "actions": [],
+          "sheetBatchReads": 0,
+          "sheetRangeReads": 0,
+          "payloadBytes": 0,
+          "mainReplacements": 1,
+          "pdfInitialRequests": 0,
+          "staticBytes": 195568
+        }
+      ]
+    }
+  }
+}

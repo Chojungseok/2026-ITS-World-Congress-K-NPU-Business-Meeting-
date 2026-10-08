@@ -3,7 +3,7 @@ function json_(result) {
 }
 function doGet(e) {
   var parameters = e && e.parameter || {};
-  return json_(handle_('GET', { action: parameters.action, providerId: parameters.providerId }));
+  return json_(handle_('GET', { action: parameters.action, providerId: parameters.providerId, includeConfig: parameters.includeConfig === 'true' }));
 }
 function doPost(e) {
   var input;
@@ -24,7 +24,7 @@ function handle_(method, input) {
       fail_('METHOD_NOT_ALLOWED', '이 기능은 POST 요청이 필요합니다.');
     // Mutations/auth counters keep the same common lock. Pure reads do not queue behind them.
     var lockedActions = ['submitRequest', 'cancelRequest', 'decideRequest', 'updateProviderCapacity',
-      'authenticateProvider', 'authenticateAdmin', 'logout', 'findRequest', 'findRequestIds'];
+      'authenticateProvider', 'authenticateAdmin', 'logout', 'findRequest', 'findRequestIds', 'extendSchedule'];
     var data = lockedActions.includes(input.action)
       ? withLock_(function() { return dispatch_(input); }) : dispatch_(input);
     return { ok: true, data: data == null ? null : data };
@@ -48,7 +48,14 @@ function dispatch_(input) {
       session_(input.token, 'admin');
       return revision_('admin');
     case 'getAvailabilityRevision': return availabilityRevision_(input.providerId);
-    case 'getAvailability': return availability_(availabilitySnapshot_(), input.providerId);
+    case 'getAvailability':
+      var availabilityRevision = snapshotRevision_('availability', input.providerId);
+      db = availabilitySnapshot_();
+      var slots = availability_(db, input.providerId);
+      return input.includeConfig === true ? { slots: slots, config: config_(db), revision: availabilityRevision } : slots;
+    case 'extendSchedule':
+      session = session_(input.token, 'admin');
+      return extendSchedule_(database_(['providers', 'capacities', 'requests']), session, input);
     case 'submitRequest': return submit_(database_(['providers', 'capacities', 'requests']), input);
     case 'findRequestIds': return findRequestIds_(database_(), input);
     case 'findRequest': return publicRow_(verifiedRequest_(database_(), input));

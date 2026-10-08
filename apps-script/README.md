@@ -2,7 +2,21 @@
 
 기존 운영용 Web App URL이 프론트엔드에 설정되어 있습니다. 이미 운영 중인 환경은 바로 아래의 갱신 절차를 따르세요. 신규 환경은 1절부터 진행합니다. **코드를 복사하는 것만으로 Google Drive나 Spreadsheet가 생성되지는 않습니다.** 최초 구축 시 운영 담당자가 Google 권한을 승인하고 setupSystem()을 실행해야 실제 DB가 만들어집니다.
 
-## 기존 운영 환경에 V2 적용
+## 기존 V2 운영 환경에 V3 적용 (현재 버전)
+
+**현재 V2 운영 DB에는 setupSystem/configureAuthentication 재실행이 필요 없습니다.** 기존 SHEET_ID·서명키·인증정보·세션·신청·이력을 유지합니다. 전체 파일 목록/이전 검사/실제 시험은 [V3 보고서](../docs/business-meeting-v3.md#2228-운영-적용-순서)를 따르세요.
+
+1. 비공개 Google Sheet 사본으로 백업합니다. 신청/승인 작업을 잠시 멈출 수 있는 시간에 진행합니다.
+2. 기존 프로젝트의 **Config.gs / Code.gs / Database.gs / Services.gs** 전체 내용을 교체합니다.
+3. 스크립트 파일 **Schedule / MigrationV3**를 추가하여 해당 .gs 내용을 복사합니다. 기존 Auth/Revision/Setup/Migration/appsscript.json과 속성은 유지합니다.
+4. 편집기 함수 목록에서 **migrateBusinessMeetingV3 → 실행**. 필요 시 운영 계정으로 Sheets 권한을 승인합니다.
+5. activeSlots/changedSlots/capacity:2 로그와 실제 active 정원을 확인합니다. 확정 2건 초과가 있으면 회사·시간·건수를 보고하며 **쓰기 전 전체 중단**합니다. 기존 확정 상담을 자동 취소하지 않습니다. 해결 후 다시 실행하면 됩니다.
+6. **배포 → 배포 관리 → 기존 Web App 수정(연필) → 새 버전 → 배포**로 같은 /exec를 갱신합니다. 나로 실행/모든 사용자 접근을 유지합니다.
+7. localhost GAS 모드 → CI → GitHub push/Pages → 모바일/PC 공유 → 관리자 연장을 순서대로 확인합니다. Google/배포 단계는 운영자가 직접 수행해야 합니다.
+
+V3는 새 시트/열을 추가하지 않습니다. 현재 운영 시간의 정원은 2, NPU 변경 범위는 0~2입니다. 관리자가 +10분씩 연장하며 새 정원 4개·시간 연장 이력 4개를 원자적으로 저장합니다. 과거 비활성 시간과 겹치면 기존 행을 재사용하여 중복을 방지합니다. ITS apply 5초/NPU 5초/admin 10초 revision은 변경 없을 때 Sheets I/O=0입니다.
+
+## 이전 V1 환경에 V2 적용 (이전 단계 참고)
 
 현재 운영 DB를 초기화하지 않습니다. **setupSystem/configureAuthentication 재실행은 필요 없습니다.** 기존 /exec URL도 유지합니다.
 
@@ -45,6 +59,8 @@ NPU 5초/관리자 10초의 가벼운 revision 확인과 변경 시 부분 갱�
 | --- | --- |
 | Config.gs | 시트 열, 기본 기업·시간, 검증 함수, 공통 잠금 |
 | Migration.gs | 기존 DB의 거절사유 열/시간표 마이그레이션, 편집기 전용 |
+| MigrationV3.gs | active 정원 2 이전, 확정 초과 전체 사전검사, 편집기 전용 |
+| Schedule.gs | 중앙 시간표 계산, 관리자 +10분 연장, 중복/재시도 보호 |
 | Setup.gs | DB 자동 생성 및 기존 구조 검사 |
 | Auth.gs | 운영 인증 설정, 해시 검증, HMAC 세션, 본인확인 |
 | Database.gs | 요청별 batchGet snapshot, 공개 설정 캐시, 안전한 셀 쓰기, 신청·이력 일괄 저장 |
@@ -58,7 +74,7 @@ NPU 5초/관리자 10초의 가벼운 revision 확인과 변경 시 부분 갱�
 1. DB를 관리할 Google 계정으로 [Apps Script](https://script.google.com/)에 접속합니다.
 2. **새 프로젝트**를 클릭하고 이름을 `K-NPU Business Meeting Backend` 등으로 지정합니다.
 3. 기본 `Code.gs` 내용을 저장소의 `apps-script/Code.gs` 전체 내용으로 바꿉니다.
-4. 왼쪽 **파일 옆 + → 스크립트**로 나머지 7개 `.gs` 파일을 같은 이름으로 만듭니다. 각 파일의 내용을 그대로 복사합니다. 파일 확장자는 편집기에서 자동으로 붙을 수 있습니다.
+4. 왼쪽 **파일 옆 + → 스크립트**로 나머지 9개 `.gs` 파일을 같은 이름으로 만듭니다. 각 파일의 내용을 그대로 복사합니다. 파일 확장자는 편집기에서 자동으로 붙을 수 있습니다.
 5. 코드에 운영 승인코드, 비밀번호, Spreadsheet ID를 직접 입력하지 않습니다.
 
 ## 3. Google Sheets API 서비스 설정
@@ -152,7 +168,7 @@ Script Properties에서 다음을 관리합니다.
 - 처리이력: 이벤트ID / 처리시각 / 처리유형 / 처리자역할 / 처리자 / 신청ID / ITS기업명 / NPU기업ID / 상담시간 / 변경전상태 / 변경후상태 / 변경전정원 / 변경후정원
 - NPU설정: NPU기업ID / NPU기업명 / 영문명 / 활성여부
 
-기본 NPU: `deepx` 딥엑스 5 / `mobilint` 모빌린트 2 / `furiosa` 퓨리오사 1 / `rebellions` 리벨리온 2.
+기본 NPU: `deepx` 딥엑스 2 / `mobilint` 모빌린트 2 / `furiosa` 퓨리오사 2 / `rebellions` 리벨리온 2. 각 시간 정원 변경은 0~2이며 확정 수 미만 축소는 거부합니다.
 
 각 기업에 `15:50 – 16:00`, `16:00 – 16:10`, `16:10 – 16:20`, `16:20 – 16:30` 네 행을 생성하므로 초기 정원 설정은 총 16행입니다. 운영여부는 TRUE로 생성됩니다. NPU 설정의 활성여부가 FALSE인 기업은 새 신청/로그인을 받지 않으며 기존 이력은 관리자에게 남습니다.
 
@@ -185,7 +201,7 @@ export const RUNTIME_CONFIG = Object.freeze({
   backend: 'auto',
   gasUrl: 'https://script.google.com/macros/s/여기에_배포_ID/exec',
   refreshIntervalMs: 30000,
-  revisionPolling: Object.freeze({ providerMs: 5000, adminMs: 10000, retryMs: 30000 })
+  revisionPolling: Object.freeze({ providerMs: 5000, adminMs: 10000, availabilityMs: 5000, retryMs: 30000 })
 });
 ```
 
@@ -222,7 +238,7 @@ Google 설정과 로컬 GAS 모드 테스트를 먼저 완료합니다. 실제 �
 3. PC에서 같은 사이트 하단 관리자 로그인 → 새 운영 ID/비밀번호로 로그인합니다. 모바일에서 신청한 기업과 ID가 보여야 합니다.
 4. 다른 브라우저에서 해당 NPU로 로그인합니다. 해당 기업 신청만 표시되어야 합니다.
 5. NPU에서 승인 → 모바일 신청 현황 확인에서 **ID + 이메일**로 조회합니다. 매칭확정이어야 합니다.
-6. NPU에서 특정 시간 정원을 변경합니다. 이미 열려 있는 ITS 신청 화면에서 약 30초 주기로 반영되는지 확인합니다. 다른 시간은 유지되어야 합니다.
+6. NPU에서 특정 시간 정원을 변경합니다. 이미 열려 있는 ITS 신청 화면에서 약 5초 revision 확인 후 반영되는지 확인합니다. 다른 시간은 유지되어야 합니다.
 7. 확정 신청을 ID + 이메일로 취소합니다. 잔여 자리가 1 증가하고 관리자 로그에 취소가 표시되어야 합니다.
 8. 신청ID만 전송하거나 틀린 이메일을 넣어 조회/취소할 수 없는지 확인합니다.
 9. 관리자 로그아웃 후 전체 목록 접근이 차단되는지, NPU 토큰으로 관리자 API/다른 기업 신청 변경이 차단되는지 확인합니다.
@@ -245,7 +261,7 @@ Google 설정과 로컬 GAS 모드 테스트를 먼저 완료합니다. 실제 �
 - 브라우저에는 토큰만 sessionStorage에 저장합니다. 실제 승인코드/비밀번호/Google 인증정보/서명 비밀키는 프론트엔드로 배포하지 않습니다.
 - 신청 ID 찾기(findRequestIds)는 POST 본문 네 항목의 동시 일치를 확인합니다. 결과는 ID/신청일시/NPU명/시간/상태만 반환하며, 입력은 DB/속성/로그에 저장하지 않습니다. 정규화 이메일의 HMAC 버킷에 성공·실패 합계 15분 10회 CacheService 제한을 둡니다. OTP 이메일 소유권 인증은 아닙니다.
 - 조회용 전체 목록은 관리자 또는 해당 NPU 인증 후에만 전달합니다.
-- 신청·승인·거절·취소·정원 변경, 인증/로그아웃/본인확인은 공통 ScriptLock을 유지합니다. 공개 조회와 기업/관리자 단일 목록의 불필요한 잠금은 제거했습니다. 관리자 overview는 일관된 네 시트 snapshot을 읽는 구간만 잠급니다. 신청 변경 + 처리이력은 Sheets batchUpdate 한 번에 저장합니다. 사용자 입력은 stringValue로 기록하므로 수식으로 실행되지 않습니다.
+- 시간 연장·신청·승인·거절·취소·정원 변경, 인증/로그아웃/본인확인은 공통 ScriptLock을 유지합니다. 공개 조회와 기업/관리자 단일 목록의 불필요한 잠금은 제거했습니다. 관리자 overview는 일관된 네 시트 snapshot을 읽는 구간만 잠급니다. 신청 변경 + 처리이력은 Sheets batchUpdate 한 번에 저장합니다. 사용자 입력은 stringValue로 기록하므로 수식으로 실행되지 않습니다.
 - 서버 내부 예외/stack trace/원시 요청을 클라이언트나 사용자 코드의 로그에 남기지 않습니다. setup의 DB URL과 마이그레이션의 변경 건수만 운영자에게 출력합니다.
 - Apps Script/Sheets의 사용량 제한과 조직 접근 정책은 별도로 적용됩니다. 익명 공개 접수에 CAPTCHA는 포함하지 않았습니다. 로그인 제한은 계정별이며 조회 제한은 Apps Script CacheService를 사용하는 보조 제한입니다. 대규모 행사·악성 트래픽 방어를 위한 운영 부하 검증은 별도입니다.
 
@@ -271,6 +287,6 @@ Google 설정과 로컬 GAS 모드 테스트를 먼저 완료합니다. 실제 �
 
 **이번 버전 갱신 후 확인:** 동일한 /exec의 새 버전 배포, Pages 반영, 실제 origin의 GET/POST/리다이렉트/JSON/CORS, 두 기기의 공유와 마지막 자리 동시 승인, 호출 수와 응답 속도. 공개 설정 캐시가 있어도 실제 정원 검증은 최신 DB를 사용하는지 위 흐름으로 확인합니다.
 
-로컬 검증: Node 테스트 85개, 기존 모바일/PC 회귀·성능 검사와 신규 변경 감지 브라우저 검사 통과. [변경 감지 결과와 재현 방법](../docs/lightweight-change-detection.md)을 참고하세요.
+로컬 검증: Node 테스트 103개, 기존 모바일/PC 회귀·성능 검사와 신규 변경 감지 브라우저 검사 통과. [변경 감지 결과와 재현 방법](../docs/lightweight-change-detection.md)을 참고하세요.
 
 로컬 자동 테스트는 실제 .gs 파일을 Google 서비스 모형에서 실행합니다. 실제 Google 서비스의 CORS, 권한, 할당량, 네트워크 경합을 검증한 결과가 아닙니다. 서버/URL 설정 후 이 문서의 실기기 테스트를 반드시 진행하세요.

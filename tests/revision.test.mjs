@@ -59,7 +59,7 @@ test('successful events bump exactly the relevant provider/admin/availability re
  event('decideRequest',{token,id:b.id,decision:'매칭거절',rejectionReason:'기존 회귀 검사용 사유'});
  const c=event('submitRequest',h.form({email:'cancel@example.com'}));
  event('cancelRequest',{id:c.id,email:c.email});
- event('updateProviderCapacity',{token,time:h.time,capacity:7},{availability:true});
+ event('updateProviderCapacity',{token,time:h.time,capacity:1},{availability:true});
 });
 
 test('validation failures and idempotent retries never change revisions',()=>{
@@ -71,7 +71,7 @@ test('validation failures and idempotent retries never change revisions',()=>{
  before=state(h);
  good(h,'decideRequest',{token,id:row.id,decision:'매칭확정'});assert.deepEqual(state(h),before);
  assert.equal(h.call('updateProviderCapacity',{token,time:h.time,capacity:0}).error.code,'CAPACITY_TOO_SMALL');assert.deepEqual(state(h),before);
- good(h,'updateProviderCapacity',{token,time:h.time,capacity:5});assert.deepEqual(state(h),before);
+ good(h,'updateProviderCapacity',{token,time:h.time,capacity:2});assert.deepEqual(state(h),before);
  good(h,'cancelRequest',{id:row.id,email:row.email});before=state(h);
  good(h,'cancelRequest',{id:row.id,email:row.email});assert.deepEqual(state(h),before);
  assert.equal(h.call('decideRequest',{token,id:row.id,decision:'매칭확정'}).error.code,'INVALID_STATE');assert.deepEqual(state(h),before);

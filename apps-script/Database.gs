@@ -116,25 +116,25 @@ function provider_(db, id, requireActive) {
 function slot_(db, providerId, time) {
   var slots = rows_(db, 'capacities').filter(function(s) { return s.providerId === providerId && s.time === time; });
   if (slots.length !== 1) fail_('SETUP_REQUIRED', '상담 시간 설정을 확인해 주세요.');
-  slots[0].capacity = integer_(slots[0].capacity, 0, 50);
+  slots[0].capacity = integer_(slots[0].capacity, 0, Number.MAX_SAFE_INTEGER);
   return slots[0];
 }
 function confirmed_(requests, providerId, time) {
   return requests.filter(function(r) { return r.providerId === providerId && r.time === time && r.status === KN.status.confirmed; }).length;
 }
 function config_(db) {
-  var slots = rows_(db, 'capacities').filter(function(s) { return KN.times.includes(s.time); });
+  var times = operatingTimes_(db), slots = rows_(db, 'capacities').filter(function(s) { return times.includes(s.time); });
   var providers = rows_(db, 'providers').map(function(p) {
     var capacities = {}, enabled = {};
     slots.filter(function(s) { return s.providerId === p.id; }).forEach(function(s) {
-      capacities[s.time] = integer_(s.capacity, 0, 50);
+      capacities[s.time] = integer_(s.capacity, 0, Number.MAX_SAFE_INTEGER);
       enabled[s.time] = active_(s.active);
     });
     return { id: p.id, name: p.name, english: p.english, active: active_(p.active), capacity: 0, capacities: capacities, enabled: enabled };
   });
   return {
     providers: providers,
-    times: KN.times.slice(),
+    times: times,
     privacy: privacy_()
   };
 }

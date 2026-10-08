@@ -37,10 +37,10 @@ try {
  await apply.page.waitForFunction(()=>document.querySelector('#time-options')?.textContent.includes('불러오는 중'));
  applyGate.release();await ready(apply.page);
  assert.equal(await apply.page.locator('[name="itsCompany"]').inputValue(),'로딩 중 입력 보존');
- assertCalls('apply-cold',apply.actions,['getConfig','getAvailability']);
- const pollResponse=apply.page.waitForResponse(r=>r.url().includes('action=getAvailability'));
+ assertCalls('apply-cold',apply.actions,['getAvailability']);
+ const pollResponse=apply.page.waitForResponse(r=>r.url().includes('action=getAvailabilityRevision'));
  await apply.page.clock.fastForward(6000);await pollResponse;await apply.page.evaluate(()=>new Promise(requestAnimationFrame));
- assertCalls('apply-poll',apply.actions,['getAvailability']);
+ assertCalls('apply-poll',apply.actions,['getAvailabilityRevision']);
  await navigate(apply.page,'home');await navigate(apply.page,'apply');
  assertCalls('apply-warm',apply.actions,['getAvailability']);
  const lookup=await client('lookup');await ready(lookup.page);await lookup.page.clock.fastForward(6000);
@@ -66,15 +66,15 @@ try {
  assert.equal(await npu.page.evaluate(()=>window.savedTabs===document.querySelector('.status-tabs')&&window.savedCapacity===document.querySelector('.capacity-settings')),true);
  assertCalls('npu-unchanged-refresh',npu.actions,['getProviderRequests']);
  const extra=h.value(h.call('submitRequest',h.form({email:'second@example.com'})));
- const draft=npu.page.locator('.slot-capacity-form [name="capacity"]').nth(1);await draft.fill('17');
+ const draft=npu.page.locator('.slot-capacity-form [name="capacity"]').nth(1);await draft.fill('1');
  await npu.page.locator('#refresh-provider').click();await npu.page.locator('[data-detail="'+extra.id+'"]').waitFor();
- assert.equal(await draft.inputValue(),'17');
+ assert.equal(await draft.inputValue(),'1');
  assert.equal(await npu.page.evaluate(()=>window.savedTabs===document.querySelector('.status-tabs')),true);
  assertCalls('npu-changed-refresh',npu.actions,['getProviderRequests']);
 
  // A slow pre-approval refresh must neither delay the mutation refresh nor restore old state.
  const stale={action:'getProviderRequests',seen:gate(),reply:gate()};npu.control.hold=stale;
- await draft.fill('5');await npu.page.locator('#refresh-provider').click();await stale.seen.wait;
+ await draft.fill('2');await npu.page.locator('#refresh-provider').click();await stale.seen.wait;
  await npu.page.locator('[data-decision="매칭확정"][data-id="'+row.id+'"]').click();
  await npu.page.locator('#confirm-action').click();
  await npu.page.locator('#result-dialog').waitFor({state:'hidden',timeout:5000});

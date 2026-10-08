@@ -79,7 +79,7 @@ try {
   assert.equal(await mobile.locator('[name="time"]').nth(1).isDisabled(),true);
   // An already-open ITS page updates a changed capacity by polling.
   const reopened=npu.locator('.slot-capacity-form').nth(1);
-  await reopened.locator('[name="capacity"]').fill('3');
+  await reopened.locator('[name="capacity"]').fill('2');
   await reopened.locator('button[type="submit"]').click();
   await mobile.waitForFunction(()=>document.querySelectorAll('[name="time"]')[1]?.disabled===false);
   await mobile.goto(base+'#lookup');

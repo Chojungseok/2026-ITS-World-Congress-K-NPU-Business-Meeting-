@@ -96,16 +96,16 @@ test('all four data mutations retain the common lock, one fresh batch snapshot, 
  const row=check('submitRequest',h.form());
  check('decideRequest',{token,id:row.id,decision:'매칭확정'});
  check('cancelRequest',{id:row.id,email:row.email});
- check('updateProviderCapacity',{token,time:h.time,capacity:2});
+ check('updateProviderCapacity',{token,time:h.time,capacity:1});
 });
 test('server public config cache expires, capacity invalidates, and in-progress stale fill is abandoned',()=>{
  const h=createHarness(),token=h.provider('deepx');
  let before=h.counters.batchGets;
  good(h,'getConfig');good(h,'getConfig');assert.equal(h.counters.batchGets-before,1);
  h.advance(30001);good(h,'getConfig');assert.equal(h.counters.batchGets-before,2);
- h.beforeNextBatch(()=>assert.equal(good(h,'getConfig').providers[0].capacities[h.time],5));
- good(h,'updateProviderCapacity',{token,time:h.time,capacity:9});
- assert.equal(good(h,'getConfig').providers[0].capacities[h.time],9);
+ h.beforeNextBatch(()=>assert.equal(good(h,'getConfig').providers[0].capacities[h.time],2));
+ good(h,'updateProviderCapacity',{token,time:h.time,capacity:1});
+ assert.equal(good(h,'getConfig').providers[0].capacities[h.time],1);
 });
 test('manual provider/operating edits invalidate with refreshPublicConfig; notice edits bypass cached notice',()=>{
  const h=createHarness();good(h,'getConfig');

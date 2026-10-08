@@ -7,11 +7,11 @@ const denied = (h,action,input,code) => {const r=h.call(action,input); assert.eq
 
 test('setup is idempotent, preserves changed capacities and never replaces an inaccessible DB',()=>{
   const h=createHarness(), token=h.provider('deepx');
-  good(h,'updateProviderCapacity',{token,time:h.time,capacity:8});
+  good(h,'updateProviderCapacity',{token,time:h.time,capacity:1});
   good(h,'submitRequest',h.form()); h.context.setupSystem();
   assert.equal(h.created,1); assert.equal(h.sheet('requests').data.length,2);
   assert.equal(h.sheet('providers').data.length,5); assert.equal(h.sheet('capacities').data.length,17);
-  assert.equal(good(h,'getAvailability',{providerId:'deepx'})[0].capacity,8);
+  assert.equal(good(h,'getAvailability',{providerId:'deepx'})[0].capacity,1);
   h.properties.set('SHEET_ID','missing');
   assert.throws(()=>h.context.setupSystem()); assert.equal(h.created,1);
 });
@@ -61,11 +61,12 @@ test('provider token scope cannot be overridden by client providerId or another 
   const token=h.provider('deepx');
   assert.deepEqual(good(h,'getProviderRequests',{token,providerId:'mobilint'}).map(r=>r.id),[dx.id]);
   denied(h,'decideRequest',{token,id:mo.id,providerId:'mobilint',decision:'매칭확정'},'NOT_FOUND');
-  good(h,'updateProviderCapacity',{token,providerId:'mobilint',time:h.time,capacity:4});
+  good(h,'updateProviderCapacity',{token,providerId:'mobilint',time:h.time,capacity:1});
   assert.equal(good(h,'getAvailability',{providerId:'mobilint'})[0].capacity,2);
 });
 test('last slot concurrent API calls: one approval succeeds; cancellation frees capacity centrally',async()=>{
   const h=createHarness(), token=h.provider('furiosa');
+  good(h,'updateProviderCapacity',{token,time:h.time,capacity:1});
   const a=good(h,'submitRequest',h.form({providerId:'furiosa'}));
   const b=good(h,'submitRequest',h.form({providerId:'furiosa',email:'other@example.com'}));
   const one=createGasApi({url:'https://script.google.com/macros/s/test/exec',fetchImpl:h.fetch});
@@ -95,9 +96,9 @@ test('slot limits are independent, bounded, cannot drop below confirmed, and clo
   good(h,'decideRequest',{token,id:row.id,decision:'매칭확정'});
   denied(h,'updateProviderCapacity',{token,time:h.time,capacity:0},'CAPACITY_TOO_SMALL');
   good(h,'updateProviderCapacity',{token,time:h.times[1],capacity:0});
-  assert.deepEqual(good(h,'getAvailability',{providerId:'deepx'}).map(s=>s.capacity),[5,0,5,5]);
+  assert.deepEqual(good(h,'getAvailability',{providerId:'deepx'}).map(s=>s.capacity),[2,0,2,2]);
   denied(h,'submitRequest',h.form({time:h.times[1]}),'CAPACITY_FULL');
-  for(const capacity of [-1,51,1.2,'',null]) denied(h,'updateProviderCapacity',{token,time:h.time,capacity},'VALIDATION');
+  for(const capacity of [-1,3,51,1.2,'',null]) denied(h,'updateProviderCapacity',{token,time:h.time,capacity},'VALIDATION');
 });
 test('active duplicates blocked; status and audit event are atomic, and formula-like inputs stay strings',()=>{
   const h=createHarness(), input=h.form({itsCompany:'=IMPORTXML("x")',contactName:'+name',details:'@payload',phone:'+82-1234-5678'});
@@ -111,7 +112,7 @@ test('active duplicates blocked; status and audit event are atomic, and formula-
   assert.deepEqual(structuredClone(h.sheet('history').data),before);
   good(h,'decideRequest',{token,id:row.id,decision:'매칭확정'});
   good(h,'cancelRequest',{id:row.id,email:row.email});
-  good(h,'updateProviderCapacity',{token,time:h.time,capacity:7});
+  good(h,'updateProviderCapacity',{token,time:h.time,capacity:1});
   const overview=good(h,'getAdminOverview',{token:h.adminToken()});
   assert.deepEqual(overview.history.map(e=>e.action),['정원 변경','취소','승인','신청']);
   assert.ok(overview.history.every(e=>e.actorRole && e.occurredAt));

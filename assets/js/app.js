@@ -7,6 +7,12 @@ view.setViewContext({ demo: api.mode === 'mock' });
 const $ = (selector, root = document) => root.querySelector(selector);
 const app = $('#app');
 app.innerHTML = view.shell();
+// Capture non-bubbling image failures without inline event handlers.
+document.addEventListener('error', event => {
+  const img = event.target;
+  if (!img.matches?.('[data-provider-logo]')) return;
+  img.hidden = true; img.parentElement.querySelector('.logo-fallback').hidden = false;
+}, true);
 const main = $('#main');
 // Partial updates preserve scroll explicitly; prevent browser anchor correction afterward.
 main.style.overflowAnchor = 'none';
@@ -23,6 +29,7 @@ let currentProviders = [];
 let activeAdminSlot = null;
 let activeRequestDetail = null;
 let lookupRow = null;
+let loadedAvailabilityRevision = null;
 let lookupPrefill = null; // ID-finder email is reused in memory only.
 let toastTimer;
 let renderVersion = 0;
@@ -115,8 +122,14 @@ async function loadTimes() {
   const form = $('#application-form');
   if (!form || form.dataset.ready !== 'true') return;
   const version = ++availabilityVersion;
-  const slots = await api.getAvailability(form.elements.providerId.value);
+  const providerId = form.elements.providerId.value;
+  const snapshot = api.mode === 'gas' ? await api.getAvailabilitySnapshot(providerId) : { slots: await api.getAvailability(providerId) };
+  const slots = snapshot.slots;
   if (version !== availabilityVersion || !form.isConnected) return;
+  if (snapshot.config) applyPublicConfig(snapshot.config);
+  else if (api.mode === 'mock') applyPublicConfig(await api.getConfig());
+  loadedAvailabilityRevision = snapshot.revision ?? null;
+  document.querySelectorAll('[data-schedule-range]').forEach(el => { el.textContent = view.scheduleRange(); });
   showTimes(form, slots);
 }
 async function initializeApplication() {
@@ -127,11 +140,16 @@ async function initializeApplication() {
   form.elements.privacyConsent.disabled = true;
   form.querySelectorAll('[name="providerId"]').forEach(input => { input.disabled = true; });
   $('#time-options').textContent = '상담 가능 시간을 불러오는 중…';
-  // Fetch both in parallel. A failed/inactive initial provider can be replaced by config.
-  const availability = api.getAvailability(initialProvider).then(slots => ({ slots }), error => ({ error }));
-  const config = await api.getConfig();
+  // One snapshot on current GAS; preserve fallback for older deployments/inactive providers.
+  const availability = api.mode === 'gas'
+    ? api.getAvailabilitySnapshot(initialProvider).then(snapshot => ({ slots:snapshot.slots, snapshot }), error => ({ error }))
+    : api.getAvailability(initialProvider).then(slots => ({ slots }), error => ({ error }));
+  // Current servers include config in the same authoritative public snapshot. Old
+  // deployments and an inactive initial provider still use the safe config fallback.
+  const initial = await availability;
+  const config = initial.snapshot?.config || await api.getConfig();
   if (!form.isConnected || version !== availabilityVersion) return;
-  if (api.mode === 'gas') applyPublicConfig(config);
+  applyPublicConfig(config);
   const providers = config.providers.filter(provider => provider.active !== false);
   $('.provider-grid', form).innerHTML = view.providerOptions(providers);
   const selected = [...form.querySelectorAll('[name="providerId"]')].find(input => input.value === initialProvider);
@@ -145,7 +163,9 @@ async function initializeApplication() {
   form.dataset.ready = 'true';
   if (!providers.length) throw new Error('현재 신청 가능한 NPU 기업이 없습니다.');
   summary();
-  const result = await availability;
+  const result = initial;
+  loadedAvailabilityRevision = result.snapshot?.revision ?? null;
+  document.querySelectorAll('[data-schedule-range]').forEach(el => { el.textContent = view.scheduleRange(); });
   if (!form.isConnected || version !== availabilityVersion) return;
   if (form.elements.providerId.value !== initialProvider) return loadTimes();
   if (result.error) throw result.error;
@@ -345,6 +365,20 @@ function filterHistory() {
 }
 
 function bindAdmin(savedHistoryFilters) {
+  $('#extend-schedule').onclick = () => {
+    const expectedLastTime = TIMES.filter(time => currentProviders.some(p => p.enabled?.[time] !== false)).at(-1);
+    showDialog(view.extensionDialog(expectedLastTime));
+    $('#confirm-extension').onclick = event => busy(event.currentTarget, async () => {
+      try {
+        await api.extendSchedule({ token: adminToken, expectedLastTime });
+        await refresh({ force:true }); dialog.close(); toast('상담 시간을 10분 연장했습니다.');
+      } catch (error) {
+        // After any uncertain write, refresh authoritative schedule before another click.
+        await refresh({ force:true }).catch(() => {});
+        throw error;
+      }
+    }, '#dialog-error');
+  };
   $('#refresh-admin').onclick = () => refresh().catch(error => toast(error.message, true));
   $('#admin-logout').onclick = async () => {
     try { await api.logout(adminToken); } catch (error) { toast(error.message, true); }
@@ -426,6 +460,7 @@ main.addEventListener('click', event => {
 });
 async function renderRoute(focus = true) {
   const version = ++renderVersion;
+  loadedAvailabilityRevision = null;
   loadedRevision = null; legacyRevisionServer = false; revisionRecovery = false; pendingRevisionSince = null; pollingError = '';
   const newRoute = location.hash.replace('#', '');
   route = titles[newRoute] ? newRoute : 'home';
@@ -437,12 +472,15 @@ async function renderRoute(focus = true) {
   $('#sidebar [data-route="npu"]').hidden = itsScreen || route === 'admin';
   $('#sidebar [data-route="admin"]').hidden = itsScreen || providerScreen;
   $('#sidebar [data-route="matching"]').hidden = !providerScreen;
+  $('#sidebar [data-route="brochures"]').hidden = providerScreen;
+  $('.topbar-right').hidden = itsScreen || route === 'home';
   $('#provider-logout').hidden = !providerToken || !providerScreen;
   const signedInProvider = providerToken ? providerById(activeProvider) : null;
   document.body.classList.toggle('has-provider-session', !!signedInProvider && route !== 'admin');
   document.body.classList.toggle('has-admin-session', !!adminToken && route === 'admin');
   $('.profile-name').textContent = route === 'admin' ? (adminToken ? 'ITS Korea 관리자' : 'ITS Korea') : signedInProvider?.name || (providerScreen ? 'NPU 기업' : 'ITS Korea');
-  $('.profile-avatar').textContent = route === 'admin' ? 'ITS' : signedInProvider?.mark || (providerScreen ? 'N' : 'K');
+  $('.profile-avatar').innerHTML = route === 'admin' ? 'ITS' : (signedInProvider && providerScreen ? view.mark(signedInProvider) : 'N');
+  $('.profile-avatar').classList.toggle('provider-profile', !!signedInProvider && providerScreen);
   $('#route-title').textContent = titles[route];
   document.title = titles[route] + ' · K-NPU Connect';
   document.querySelectorAll('[data-route]').forEach(link => {
@@ -566,7 +604,7 @@ async function loadAdminView(version, partial) {
   const token = adminToken, generation = dataGeneration, overview = await api.getAdminOverview(token);
   if (version !== renderVersion || generation !== dataGeneration || token !== adminToken || route !== 'admin') return;
   // Legacy server fallback derives public times from the already-returned capacities.
-  if (api.mode === 'gas') applyPublicConfig(overview.config || {
+  applyPublicConfig(overview.config || {
     providers: overview.providers,
     times: [...new Set(overview.providers.flatMap(p => Object.keys(p.capacities || {})))].sort().length
       ? [...new Set(overview.providers.flatMap(p => Object.keys(p.capacities || {})))].sort() : TIMES
@@ -642,6 +680,13 @@ function refresh({ force = false, changesOnly = false } = {}) {
   const version = renderVersion, generation = dataGeneration;
   refreshVersion = version;
   const pending = (async () => {
+    if (route === 'apply' && changesOnly && api.mode === 'gas' && loadedAvailabilityRevision) {
+      try {
+        const revision = await api.getAvailabilityRevision($('#application-form').elements.providerId.value);
+        if (version !== renderVersion || generation !== dataGeneration || document.visibilityState !== 'visible') return;
+        if (revision.revision === loadedAvailabilityRevision) return;
+      } catch(error) { if (!['UNKNOWN_ACTION','REVISION_PENDING'].includes(error.code)) throw error; }
+    }
     const detecting = changesOnly && api.mode === 'gas' && !legacyRevisionServer &&
       (route === 'admin' || ['npu', 'matching'].includes(route));
     if (detecting) {
@@ -735,6 +780,7 @@ $('#provider-logout').onclick = async () => {
 };
 function automaticDelay() {
   if (revisionRecovery) return pollingConfig.retryMs;
+  if (route === 'apply') return pollingConfig.availabilityMs || 5000;
   if (!legacyRevisionServer && ['npu', 'matching'].includes(route) && providerToken) return pollingConfig.providerMs;
   if (!legacyRevisionServer && route === 'admin' && adminToken) return pollingConfig.adminMs;
   return RUNTIME_CONFIG.refreshIntervalMs;

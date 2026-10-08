@@ -38,6 +38,18 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     if (data?.config && generation === configGeneration) rememberConfig(data.config);
     return data;
   }
+  async function availabilitySnapshot(providerId) {
+    const generation = configGeneration;
+    const data = await call('getAvailability', { providerId, includeConfig: true }, 'GET');
+    if (Array.isArray(data)) return { slots: data }; // Old deployed server during rollout.
+    if (data?.config && generation === configGeneration) rememberConfig(data.config);
+    return data;
+  }
+  async function extendSchedule({ token, expectedLastTime }) {
+    invalidateConfig();
+    try { return await call('extendSchedule', { token, expectedLastTime }); }
+    finally { invalidateConfig(); }
+  }
   async function updateCapacity(input) {
     invalidateConfig();
     try { return await call('updateProviderCapacity', input); }
@@ -54,6 +66,7 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
       if (method === 'GET') {
         target.searchParams.set('action', action);
         if (payload.providerId) target.searchParams.set('providerId', payload.providerId);
+        if (payload.includeConfig === true) target.searchParams.set('includeConfig', 'true');
       } else {
         options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
         options.body = JSON.stringify({ ...payload, action });
@@ -88,6 +101,8 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     mode: 'gas',
     getConfig,
     invalidateConfig,
+    extendSchedule,
+    getAvailabilitySnapshot: availabilitySnapshot,
     getAvailability: providerId => call('getAvailability', { providerId }, 'GET'),
     submitRequest: input => call('submitRequest', input),
     findRequestIds: input => call('findRequestIds', {

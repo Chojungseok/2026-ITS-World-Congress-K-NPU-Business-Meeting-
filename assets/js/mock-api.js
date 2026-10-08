@@ -1,4 +1,4 @@
-import { STATUS, PROVIDERS, TIMES, LEGACY_TIMES, PREVIOUS_TIMES, PRIVACY_NOTICE_VERSION, STORAGE_KEY, providerById } from './config.js';
+import { STATUS, PROVIDERS, TIMES, BASE_TIMES, applyPublicConfig, LEGACY_TIMES, PREVIOUS_TIMES, PRIVACY_NOTICE_VERSION, STORAGE_KEY, providerById } from './config.js';
 
 let queue = Promise.resolve();
 const sessions = new Map();
@@ -11,18 +11,20 @@ const LOCAL_APPROVAL_CODES = Object.freeze({
   rebellions: 'rebellions20261022'
 });
 const LOCAL_ADMIN = Object.freeze({ id: 'ITSKOREA9911', password: 'ITSKOREA9911!' });
-const defaultCapacities = () => Object.fromEntries(PROVIDERS.map(p => [p.id, p.capacity]));
-const slotDefaults = capacities => Object.fromEntries(PROVIDERS.map(p => [p.id, Object.fromEntries(TIMES.map(time => [time, capacities[p.id]]))]));
+const defaultCapacities = () => Object.fromEntries(PROVIDERS.map(p => [p.id, 2]));
+const slotDefaults = capacities => Object.fromEntries(PROVIDERS.map(p => [p.id, Object.fromEntries(BASE_TIMES.map(time => [time, capacities[p.id]]))]));
 const capacityAt = (data, providerId, time) => data.slotCapacities[providerId][time] ?? data.capacities[providerId];
-const configuredProviders = data => PROVIDERS.map(p => ({ ...p, capacity: data.capacities[p.id], capacities: Object.fromEntries(TIMES.map(time => [time, capacityAt(data, p.id, time)])) }));
+const configuredProviders = data => PROVIDERS.map(p => ({ ...p, capacity: data.capacities[p.id], capacities: Object.fromEntries(data.times.map(time => [time, capacityAt(data, p.id, time)])) }));
 const newestHistory = events => events.map((event, index) => ({ event, index })).sort((a, b) => {
   if (!a.event.occurredAt && !b.event.occurredAt) return b.index - a.index;
   if (!a.event.occurredAt) return 1;
   if (!b.event.occurredAt) return -1;
   return Date.parse(b.event.occurredAt) - Date.parse(a.event.occurredAt) || b.index - a.index;
 }).map(item => item.event);
-const validCapacity = value => Number.isInteger(value) && value >= 0 && value <= 50;
-const historyActions = ['신청', '취소', '승인', '거절', '정원 변경', '기존 상태'];
+const validCapacity = value => Number.isInteger(value) && value >= 0 && value <= 50; // Historical storage validation only.
+const writableCapacity = value => Number.isInteger(value) && value >= 0 && value <= 2;
+const validSlotTime = time => /^\d{2}:\d{2} – \d{2}:\d{2}$/.test(time);
+const historyActions = ['신청', '취소', '승인', '거절', '정원 변경', '시간 연장', '기존 상태'];
 const baselineHistory = requests => requests.map(row => ({
   id: 'BASE-' + row.id, occurredAt: null, action: '기존 상태', actor: '이전 데이터',
   requestId: row.id, itsCompany: row.itsCompany, providerId: row.providerId,
@@ -31,7 +33,7 @@ const baselineHistory = requests => requests.map(row => ({
 const initialData = () => {
   const requests = seed();
   const capacities = defaultCapacities();
-  return { version: 1, requests, capacities, slotCapacities: slotDefaults(capacities), history: baselineHistory(requests) };
+  return { version: 1, capacityVersion: 3, times: [...BASE_TIMES], requests, capacities, slotCapacities: slotDefaults(capacities), history: baselineHistory(requests) };
 };
 function recordHistory(data, row, action, actor, fromStatus = null) {
   data.history.push({
@@ -65,7 +67,7 @@ function seed() {
     phone: '010-0000-0000',
     email: 'demo' + (index + 1) + '@example.com',
     providerId: PROVIDERS[index % 4].id,
-    time: TIMES[Math.floor(index / 4)],
+    time: BASE_TIMES[Math.floor(index / 4)],
     attendees: index % 3 + 1,
     details: ['지능형 교통관제 시스템의 영상 분석을 NPU 환경으로 전환하고자 합니다. 모델 호환성과 도입 절차를 상담하고 싶습니다.', '도로 인프라에 적용할 엣지 AI 솔루션과 실증 협력 가능성을 논의하고 싶습니다.', '차량 객체 인식 모델의 추론 성능 및 전력 효율 개선을 위한 기술 상담을 희망합니다.'][index % 3],
     status
@@ -96,35 +98,49 @@ function read() {
       return row;
     });
     let upgraded = false;
+    if (!data.times) { data.times = [...BASE_TIMES]; upgraded = true; }
+    if (!Array.isArray(data.times) || !data.times.length || !data.times.every(validSlotTime) || new Set(data.times).size !== data.times.length) throw new Error('invalid');
     if (data.capacities === undefined) { data.capacities = defaultCapacities(); upgraded = true; }
     if (!data.capacities || !PROVIDERS.every(p => validCapacity(data.capacities[p.id]))) throw new Error('invalid');
     if (data.slotCapacities === undefined) { data.slotCapacities = slotDefaults(data.capacities); upgraded = true; }
     if (!data.slotCapacities || !PROVIDERS.every(p => data.slotCapacities[p.id] &&
       typeof data.slotCapacities[p.id] === 'object' && Object.values(data.slotCapacities[p.id]).every(validCapacity))) throw new Error('invalid');
     // Preserve previous slots, requests and history; add only missing current slots.
-    for (const p of PROVIDERS) for (const time of TIMES) if (data.slotCapacities[p.id][time] === undefined) {
+    for (const p of PROVIDERS) for (const time of data.times) if (data.slotCapacities[p.id][time] === undefined) {
       data.slotCapacities[p.id][time] = p.capacity; upgraded = true;
     }
     if (data.history === undefined) { data.history = baselineHistory(data.requests); upgraded = true; }
     if (!Array.isArray(data.history) || !data.history.every(validHistory)) throw new Error('invalid');
+    if (data.capacityVersion !== 3) {
+      for (const p of PROVIDERS) for (const time of data.times) {
+        const confirmed = data.requests.filter(r => r.providerId === p.id && r.time === time && r.status === STATUS.CONFIRMED).length;
+        if (confirmed > 2) fail(p.name + ' / ' + time + ' / 확정 ' + confirmed + '건: 로컬 V3 전환 전 확인해 주세요.');
+      }
+      for (const p of PROVIDERS) {
+        data.capacities[p.id] = 2;
+        for (const time of data.times) data.slotCapacities[p.id][time] = 2;
+      }
+      data.capacityVersion = 3; upgraded = true;
+    }
     if (upgraded) write(data);
     return data;
   } catch (error) {
     if (error.message === 'invalid' || error instanceof SyntaxError) fail('저장된 데모 데이터를 읽을 수 없습니다. 왼쪽 메뉴의 데모 초기화를 이용해 주세요.');
+    if (/로컬 V3/.test(error.message)) throw error;
     fail('브라우저 저장소를 사용할 수 없습니다. 저장소 허용 설정을 확인해 주세요.');
   }
 }
 function validRecord(record) {
   return record && ['id', 'createdAt', 'itsCompany', 'contactName', 'phone', 'email', 'details'].every(key => typeof record[key] === 'string')
-    && !!providerById(record.providerId) && [...TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(record.time)
+    && !!providerById(record.providerId) && ([...BASE_TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(record.time) || validSlotTime(record.time))
     && Object.values(STATUS).includes(record.status) && Number.isInteger(record.attendees) && record.attendees > 0;
 }
 function validHistory(event) {
   return event && typeof event.id === 'string' && historyActions.includes(event.action)
     && typeof event.actor === 'string' && !!providerById(event.providerId)
     && (event.occurredAt === null || (typeof event.occurredAt === 'string' && Number.isFinite(Date.parse(event.occurredAt))))
-    && (event.action === '정원 변경'
-      ? event.requestId === null && (event.time == null || [...TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(event.time)) && validCapacity(event.beforeCapacity) && validCapacity(event.afterCapacity)
+    && (['정원 변경', '시간 연장'].includes(event.action)
+      ? event.requestId === null && (event.time == null || ([...BASE_TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(event.time) || validSlotTime(event.time))) && validCapacity(event.beforeCapacity) && validCapacity(event.afterCapacity)
       : typeof event.requestId === 'string' && typeof event.itsCompany === 'string' && typeof event.time === 'string'
         && Object.values(STATUS).includes(event.toStatus)
         && (event.fromStatus === null || Object.values(STATUS).includes(event.fromStatus)));
@@ -167,11 +183,11 @@ const newSession = value => { const token = uid(); sessions.set(token, value); r
 
 export const api = {
   mode: 'mock',
-  async getConfig() { return clone({ providers: configuredProviders(read()), times: TIMES }); },
+  async getConfig() { const data = read(); return clone({ providers: configuredProviders(data), times: data.times }); },
   async getAvailability(providerId) {
     if (!providerById(providerId)) fail('NPU 기업을 선택해 주세요.');
     const data = read();
-    return TIMES.map(time => ({ time, confirmed: count(data.requests, providerId, time), capacity: capacityAt(data, providerId, time) }));
+    return data.times.map(time => ({ time, confirmed: count(data.requests, providerId, time), capacity: capacityAt(data, providerId, time) }));
   },
   async submitRequest(input) {
     const itsCompany = textOf(input.itsCompany, '기업명', 80);
@@ -181,7 +197,7 @@ export const api = {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) fail('올바른 이메일을 입력해 주세요.');
     if (!/^[0-9+()\s-]{7,24}$/.test(phone)) fail('올바른 연락처를 입력해 주세요.');
     const provider = providerById(input.providerId);
-    if (!provider || !TIMES.includes(input.time)) fail('NPU 기업과 상담 시간을 선택해 주세요.');
+    if (!provider || !read().times.includes(input.time)) fail('NPU 기업과 상담 시간을 선택해 주세요.');
     const attendees = Number(input.attendees);
     if (!Number.isInteger(attendees) || attendees < 1 || attendees > 20) fail('참석인원은 1~20명으로 입력해 주세요.');
     const details = textOf(input.details, '상담내용', 1000);
@@ -249,10 +265,10 @@ export const api = {
   },
   async updateProviderCapacity({ token, time, capacity }) {
     const { providerId } = session(token, 'provider');
-    if (!['string', 'number'].includes(typeof capacity) || !/^\d+$/.test(String(capacity).trim()) || !validCapacity(Number(capacity))) {
-      fail('최대 상담 건수는 0~50 사이의 정수로 입력해 주세요.');
+    if (!['string', 'number'].includes(typeof capacity) || !/^\d+$/.test(String(capacity).trim()) || !writableCapacity(Number(capacity))) {
+      fail('최대 상담 건수는 0~2 사이의 정수로 입력해 주세요.');
     }
-    if (!TIMES.includes(time)) fail('변경할 상담 시간대를 선택해 주세요.');
+    if (!read().times.includes(time)) fail('변경할 상담 시간대를 선택해 주세요.');
     const nextCapacity = Number(capacity);
     return mutate(data => {
       const minimum = count(data.requests, providerId, time);
@@ -269,6 +285,26 @@ export const api = {
       return { providerId, time, capacity: nextCapacity };
     });
   },
+  async extendSchedule({ token, expectedLastTime }) {
+    session(token, 'admin');
+    return mutate(data => {
+      const last = data.times.at(-1);
+      if (last !== expectedLastTime) throw Object.assign(new Error('상담 시간이 이미 변경되었습니다. 최신 현황을 확인해 주세요.'), { code: 'SCHEDULE_CHANGED' });
+      const [,h,m] = /– (\d{2}):(\d{2})$/.exec(last);
+      const end = Number(h)*60+Number(m);
+      if (end+10 >= 1440) throw Object.assign(new Error('날짜 경계를 넘는 상담 시간은 추가할 수 없습니다.'), { code:'SCHEDULE_LIMIT' });
+      const hhmm = n => String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+      const time = hhmm(end)+' – '+hhmm(end+10);
+      for (const p of PROVIDERS) if (count(data.requests,p.id,time)>2) fail(p.name+' '+time+' 확정 상담이 2건을 초과합니다.');
+      data.times.push(time);
+      for (const p of PROVIDERS) {
+        data.slotCapacities[p.id][time]=2;
+        data.history.push({ id:uid(), occurredAt:new Date().toISOString(), action:'시간 연장', actor:'ITS Korea 관리자',
+          actorRole:'admin', providerId:p.id, requestId:null, time, beforeCapacity:0, afterCapacity:2 });
+      }
+      return {previousLastTime:last,time,providerIds:PROVIDERS.map(p=>p.id),capacity:2};
+    });
+  },
   async logout(token) { sessions.delete(token); },
   async getProviderRequests(token) {
     const { providerId } = session(token, 'provider');
@@ -282,7 +318,7 @@ export const api = {
       if (!row) fail('이 기업의 신청을 찾을 수 없습니다.');
       const reason = decision === STATUS.REJECTED ? textOf(rejectionReason, '거절 사유', 500) : '';
       if (row.status !== STATUS.PENDING) fail('이미 처리된 신청입니다. 목록을 새로고침해 주세요.');
-      if (decision === STATUS.CONFIRMED && !TIMES.includes(row.time)) fail('이전 상담 시간은 승인할 수 없습니다.');
+      if (decision === STATUS.CONFIRMED && !data.times.includes(row.time)) fail('이전 상담 시간은 승인할 수 없습니다.');
       if (decision === STATUS.CONFIRMED && count(data.requests, providerId, row.time) >= capacityAt(data, providerId, row.time)) fail(message.full);
       const previousStatus = row.status;
       row.status = decision; row.rejectionReason = reason; row.updatedAt = new Date().toISOString();
@@ -294,12 +330,13 @@ export const api = {
   async getAdminOverview(token) {
     session(token, 'admin');
     const data = read();
-    return clone({ requests: data.requests, history: newestHistory(data.history), providers: configuredProviders(data) });
+    return clone({ requests: data.requests, history: newestHistory(data.history), providers: configuredProviders(data), config: { providers: configuredProviders(data), times: data.times } });
   },
   async resetDemo() {
     const reset = () => write(initialData());
     if (globalThis.navigator?.locks) await navigator.locks.request(STORAGE_KEY, reset);
     else await reset();
+    applyPublicConfig(await api.getConfig());
     sessions.clear(); findIdAttempts.clear();
   }
 };

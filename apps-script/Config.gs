@@ -2,9 +2,9 @@
 var KN = {
   status: { pending: '승인대기', confirmed: '매칭확정', rejected: '매칭거절', cancelled: '신청취소' },
   providers: [
-    { id: 'deepx', name: '딥엑스', english: 'DEEPX', capacity: 5 },
+    { id: 'deepx', name: '딥엑스', english: 'DEEPX', capacity: 2 },
     { id: 'mobilint', name: '모빌린트', english: 'MOBILINT', capacity: 2 },
-    { id: 'furiosa', name: '퓨리오사', english: 'FURIOSA', capacity: 1 },
+    { id: 'furiosa', name: '퓨리오사', english: 'FURIOSA', capacity: 2 },
     { id: 'rebellions', name: '리벨리온', english: 'REBELLIONS', capacity: 2 }
   ],
   previousTimes: ['16:50 – 17:00', '17:00 – 17:10', '17:10 – 17:20', '17:20 – 17:30'],

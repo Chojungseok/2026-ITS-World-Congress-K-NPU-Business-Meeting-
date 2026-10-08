@@ -172,27 +172,28 @@ test('관리자 ID와 비밀번호를 검증하고 NPU 세션의 전체 이력 �
 test('NPU 정원은 본인 기업만 변경되고 변경값을 저장하며 잘못된 값을 거부한다', async () => {
   const token = await providerLogin('deepx');
   const admin = await adminLogin();
-  for (const capacity of [-1, 1.5, 51, '', ' ', null, true, '2x', undefined]) {
+  for (const capacity of [-1, 1.5, 3, 51, '', ' ', null, true, '2x', undefined]) {
     await assert.rejects(api.updateProviderCapacity({ time: TIMES[3], token, capacity }), /정수/);
   }
   await assert.rejects(api.updateProviderCapacity({ time: TIMES[3], token: admin, capacity: 2 }), /세션/);
   await assert.rejects(api.updateProviderCapacity({ time: TIMES[3], token: 'bad', capacity: 2 }), /세션/);
-  await api.updateProviderCapacity({ time: TIMES[3], token, capacity: '3', providerId: 'mobilint' });
+  await api.updateProviderCapacity({ time: TIMES[3], token, capacity: '1', providerId: 'mobilint' });
   const providers = (await api.getConfig()).providers;
-  assert.equal(providers.find(p => p.id === 'deepx').capacities[TIMES[3]], 3);
+  assert.equal(providers.find(p => p.id === 'deepx').capacities[TIMES[3]], 1);
   assert.equal(providers.find(p => p.id === 'mobilint').capacity, 2);
-  assert.equal(JSON.parse(localStorage.getItem(STORAGE_KEY)).slotCapacities.deepx[TIMES[3]], 3);
-  assert.deepEqual((await api.getAvailability('deepx')).map(slot => slot.capacity), [5, 5, 5, 3]);
-  await api.updateProviderCapacity({ time: TIMES[3], token, capacity: 3 });
+  assert.equal(JSON.parse(localStorage.getItem(STORAGE_KEY)).slotCapacities.deepx[TIMES[3]], 1);
+  assert.deepEqual((await api.getAvailability('deepx')).map(slot => slot.capacity), [2, 2, 2, 1]);
+  await api.updateProviderCapacity({ time: TIMES[3], token, capacity: 1 });
   const changes = (await api.getAdminOverview(admin)).history.filter(event => event.action === '정원 변경');
   assert.equal(changes.length, 1);
-  assert.equal(changes[0].beforeCapacity, 5);
-  assert.equal(changes[0].afterCapacity, 3);
+  assert.equal(changes[0].beforeCapacity, 2);
+  assert.equal(changes[0].afterCapacity, 1);
   assert.equal(changes[0].time, TIMES[3]);
 });
 
 test('정원 확대 시 기존 대기 상담을 승인하고 확정 수보다 낮은 축소는 차단한다', async () => {
   const token = await providerLogin('furiosa');
+  await api.updateProviderCapacity({ token, time: TIMES[0], capacity: 1 });
   await assert.rejects(api.decideRequest({ token, id: 'DEMO-0003', decision: STATUS.CONFIRMED }), /정원/);
   await api.updateProviderCapacity({ time: TIMES[0], token, capacity: 2 });
   await api.decideRequest({ token, id: 'DEMO-0003', decision: STATUS.CONFIRMED });
@@ -262,7 +263,7 @@ test('이전 저장 데이터를 보존하면서 설정과 기존 상태 이력�
   const overview = await api.getAdminOverview(token);
   assert.equal(overview.requests[0].status, STATUS.CANCELLED);
   assert.equal(overview.history.length, 13);
-  assert.equal(overview.providers[0].capacity, 5);
+  assert.equal(overview.providers[0].capacity, 2);
   assert.equal((await api.getAdminOverview(token)).history.length, 13);
   assert.equal(JSON.parse(localStorage.getItem(STORAGE_KEY)).history.length, 13);
 });
@@ -302,7 +303,7 @@ test('시간대 누락·잘못된 시간은 거부하고 서로 다른 시간대
     api.updateProviderCapacity({ token, time: TIMES[0], capacity: 0 }),
     api.updateProviderCapacity({ token, time: TIMES[3], capacity: 2 })
   ]);
-  assert.deepEqual((await api.getAvailability('deepx')).map(slot => slot.capacity), [0, 5, 5, 2]);
+  assert.deepEqual((await api.getAvailability('deepx')).map(slot => slot.capacity), [0, 2, 2, 2]);
   await assert.rejects(api.submitRequest(form({ time: TIMES[0] })), /정원/);
   const row = await api.submitRequest(form({ time: TIMES[3] }));
   await api.decideRequest({ token, id: row.id, decision: STATUS.CONFIRMED });
@@ -312,9 +313,9 @@ test('시간대 누락·잘못된 시간은 거부하고 서로 다른 시간대
 test('관리자 로그는 기록된 시각순으로 정렬하고 미기록 상태는 마지막에 둔다', async () => {
   const admin = await adminLogin();
   const token = await providerLogin('deepx');
-  await api.updateProviderCapacity({ token, time: TIMES[0], capacity: 2 });
-  await api.updateProviderCapacity({ token, time: TIMES[3], capacity: 3 });
-  await api.updateProviderCapacity({ token, time: TIMES[2], capacity: 4 });
+  await api.updateProviderCapacity({ token, time: TIMES[0], capacity: 0 });
+  await api.updateProviderCapacity({ token, time: TIMES[3], capacity: 1 });
+  await api.updateProviderCapacity({ token, time: TIMES[2], capacity: 0 });
   const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
   const changes = stored.history.filter(event => event.action === '정원 변경');
   changes[0].occurredAt = '2026-10-06T15:00:00+09:00';

@@ -183,7 +183,7 @@ test('legacy rejection is empty and all detail views escape reasons and show onl
   assert.equal(legacy.rejectionReason,'');assert.ok(!view.requestDetail(legacy).includes('rejection-reason'));
   for(const status of ['승인대기','매칭확정','신청취소'])assert.ok(!view.requestDetail({...row,status,rejectionReason:'hidden'}).includes('rejection-reason'));
   const rendered=view.requestDetail({...row,status:'매칭거절',rejectionReason:'<img src=x onerror=alert(1)>'});
-  assert.ok(rendered.includes('거절 사유'));assert.ok(rendered.includes('&lt;img'));assert.ok(!rendered.includes('<img'));
+  assert.ok(rendered.includes('거절 사유'));assert.ok(rendered.includes('&lt;img'));assert.ok(!rendered.includes('<img src=x')); assert.ok(!/<img[^>]*onerror=/.test(rendered));
 });
 test('adapter ID finder and rejection send body-only POST, never query PII or persist it',async()=>{
   const h=createHarness(),sent=[];

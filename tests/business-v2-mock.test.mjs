@@ -18,7 +18,7 @@ test('mock upgrades old slot capacities while preserving previous requests/histo
  const config=await api.getConfig();assert.deepEqual(config.times,TIMES);assert.deepEqual(Object.keys(config.providers[0].capacities),TIMES);
  const upgraded=JSON.parse(memory.get(STORAGE_KEY));assert.deepEqual(upgraded.requests,stored.requests);assert.deepEqual(upgraded.history,stored.history);
  assert.equal(upgraded.slotCapacities.deepx[PREVIOUS_TIMES[0]],7);
- assert.equal(upgraded.slotCapacities.deepx[TIMES[0]],5);
+ assert.equal(upgraded.slotCapacities.deepx[TIMES[0]],2);
  for(const time of PREVIOUS_TIMES)await assert.rejects(api.submitRequest(form({time})));
 });
 test('mock ID finder returns multiple minimal results newest first without writing input or audit',async()=>{

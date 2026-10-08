@@ -1,5 +1,6 @@
 import { PROVIDERS, TIMES, STATUS, providerById, capacityFor, isSlotOpen, PRIVACY_NOTICE } from './config.js';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+import { PROVIDER_LOGOS } from './logos.js';
 import { BROCHURES } from './brochures.js';
 const e = escapeHtml;
 let demo = true;
@@ -25,9 +26,16 @@ const paths = {
 export const icon = name => '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || paths.grid) + '</svg>';
 export const statusClass = status => ({ [STATUS.PENDING]: 'pending', [STATUS.CONFIRMED]: 'confirmed', [STATUS.REJECTED]: 'rejected', [STATUS.CANCELLED]: 'cancelled' }[status] || 'cancelled');
 export const badge = status => '<span class="badge ' + statusClass(status) + '"><i></i>' + e(status) + '</span>';
-export const mark = value => { const provider = { ...providerById(value.id), ...value }; return '<span class="provider-mark ' + provider.color + '" aria-hidden="true">' + e(provider.mark) + '</span>'; };
+export const mark = value => {
+  const provider = { ...providerById(value.id), ...value }, logo = PROVIDER_LOGOS[provider.id];
+  return '<span class="provider-mark provider-logo '+(logo?.dark ? 'logo-dark' : '')+'">' +
+    (logo ? '<img data-provider-logo src="./assets/logos/'+e(logo.file)+'" alt="'+e(logo.alt)+'" width="'+logo.width+'" height="'+logo.height+'" loading="lazy" decoding="async">' : '') +
+    '<span class="logo-fallback" '+(logo?'hidden':'')+'>'+e(provider.english || provider.name)+'</span></span>';
+};
 export const options = (items, first) => '<option value="">' + first + '</option>' + items.map(item => typeof item === 'string' ? '<option value="' + e(item) + '">' + e(item) + '</option>' : '<option value="' + e(item.id) + '">' + e(item.name) + '</option>').join('');
-export const dateText = date => new Intl.DateTimeFormat('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' }).format(new Date(date));
+const dateFormatter = new Intl.DateTimeFormat('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Seoul' });
+const logDateFormatter = new Intl.DateTimeFormat('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZone:'Asia/Seoul' });
+export const dateText = date => dateFormatter.format(new Date(date));
 
 export function shell() {
   return `<aside class="sidebar" id="sidebar">
@@ -50,7 +58,7 @@ export function shell() {
     </div>
   </aside>
   <div class="workspace">
-    <header class="topbar"><div class="breadcrumb"><button class="icon-button mobile-menu" id="menu-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="sidebar">${icon('menu')}</button><span>비즈매칭 플랫폼</span><span class="separator">/</span><strong id="route-title">상담 신청</strong></div><div class="topbar-right"><span class="demo-pill"><i></i> ${demo ? '로컬 데모' : '비즈매칭'}</span><span class="topbar-divider"></span><span class="profile-avatar">K</span><span class="profile-name">ITS Korea</span><button class="text-button" id="provider-logout" hidden>로그아웃</button></div></header>
+    <header class="topbar"><div class="event-identity"><span>2026 강릉 ITS 세계총회</span><strong>K-NPU Business Meeting</strong><small>Beyond Mobility, Connected World · October 19–23, 2026</small></div><div class="topbar-controls"><div class="breadcrumb"><button class="icon-button mobile-menu" id="menu-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="sidebar">${icon('menu')}</button><span>비즈매칭 플랫폼</span><span class="separator">/</span><strong id="route-title">상담 신청</strong></div><div class="topbar-right"><span class="demo-pill"><i></i> ${demo ? '로컬 데모' : '비즈매칭'}</span><span class="topbar-divider"></span><span class="profile-avatar">K</span><span class="profile-name">ITS Korea</span><button class="text-button" id="provider-logout" hidden>로그아웃</button></div></div></header>
     <main id="main" tabindex="-1"></main>
     <footer class="footer"><span>© K-NPU Connect · ITS Korea</span><span>ITS와 NPU, 가능성을 연결합니다.</span></footer>
   </div>`;
@@ -59,9 +67,8 @@ export function shell() {
 export function applyPage(providers = PROVIDERS.filter(p => p.active !== false)) {
   return `<section class="hero">
     <div class="hero-content"><span class="eyebrow"><span></span> CONNECT TO THE NEXT</span><h1>새로운 협력의 시작,<br><em>K-NPU 비즈매칭</em></h1><p>우리 기업에 맞는 NPU 파트너를 만나보세요.<br>1:1 기술 상담으로 AI 전환의 다음 단계를 함께합니다.</p><div class="hero-tags"><span>${icon('users')} 4개 NPU 파트너</span><span>${icon('clock')} 1:1 맞춤 상담</span></div></div>
-    <div class="connect-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="art-line line-one"></div><div class="art-line line-two"></div><div class="art-node node-its">ITS<small>INTELLIGENT TRANSPORT</small></div><div class="art-node node-npu">NPU<small>AI ACCELERATOR</small></div><div class="art-link">↗</div><span class="art-dot dot-one"></span><span class="art-dot dot-two"></span><span class="art-caption">BETTER TOGETHER, NEXT POSSIBILITIES</span></div>
-  </section>
-  <div class="notice">${icon('info')}<p>${demo ? '<strong>프로토타입 안내</strong> 이 브라우저에만 저장되는 로컬 데모입니다. 예시 정보로 테스트해 주세요.' : '<strong>상담 신청 안내</strong> 신청 정보는 ITS Korea의 비즈매칭 운영을 위해 저장됩니다.'} 상담은 15:50부터 16:30까지 10분 단위로 진행됩니다.</p></div>
+    </section>
+  <div class="notice">${icon('info')}<p>${demo ? '<strong>프로토타입 안내</strong> 이 브라우저에만 저장되는 로컬 데모입니다. 예시 정보로 테스트해 주세요.' : '<strong>상담 신청 안내</strong> 신청 정보는 ITS Korea의 비즈매칭 운영을 위해 저장됩니다.'} 상담은 <span data-schedule-range>${scheduleRange()}</span> 시간대에 10분 단위로 진행됩니다.</p></div>
   <div class="section-heading"><div><span class="eyebrow gray">BUSINESS MEETING</span><h2>1:1 상담 신청</h2><p>기업 정보와 희망하는 상담을 입력해 주세요.</p></div><span class="required-note"><b>*</b> 필수 입력 항목</span></div>
   <div class="application-layout">
   <form id="application-form" class="form-card">
@@ -73,7 +80,7 @@ export function applyPage(providers = PROVIDERS.filter(p => p.active !== false))
     <label class="field full">이메일 <b>*</b><input name="email" type="email" autocomplete="email" maxlength="120" placeholder="name@company.com" required><small>상담 관련 연락과 신청 확인에 사용하는 이메일입니다. 자동 확인 메일은 발송되지 않습니다.</small></label></div></section>
     <section class="form-section"><div class="form-section-title"><span class="section-icon">${icon('users')}</span><h3>상담 파트너 및 시간</h3></div>
     <fieldset class="provider-fieldset"><legend>상담 희망 NPU 기업 <b>*</b></legend><div class="provider-grid">${providerOptions(providers)}</div></fieldset>
-    <fieldset class="time-fieldset"><legend>상담 희망 시간 <b>*</b><span class="legend-extra">10분 단위 · 15:50–16:30</span></legend><div id="time-options" class="time-grid"><p>시간을 불러오는 중입니다.</p></div><p class="field-hint">${icon('info')} 승인대기 신청은 정원에 포함되지 않으며, NPU 기업의 승인 시 확정됩니다.</p></fieldset>
+    <fieldset class="time-fieldset"><legend>상담 희망 시간 <b>*</b><span class="legend-extra">10분 단위 · <span data-schedule-range>${scheduleRange()}</span></span></legend><div id="time-options" class="time-grid"><p>시간을 불러오는 중입니다.</p></div><p class="field-hint">${icon('info')} 승인대기 신청은 정원에 포함되지 않으며, NPU 기업의 승인 시 확정됩니다.</p></fieldset>
     <label class="field attendees-field">참석인원 <b>*</b><span class="number-input"><input name="attendees" type="number" min="1" max="20" step="1" value="1" required><span>명</span></span></label></section>
     <section class="form-section"><div class="form-section-title"><span class="section-icon">${icon('file')}</span><h3>상담 내용</h3></div><label class="field">상담하고 싶은 내용을 알려주세요 <b>*</b><textarea name="details" rows="5" maxlength="1000" placeholder="도입을 검토 중인 서비스, 기술 과제, 협력하고 싶은 분야 등을 자유롭게 작성해 주세요." required></textarea></label><div class="textarea-footer"><span>구체적으로 작성하면 더욱 알찬 상담을 준비할 수 있습니다.</span><span id="character-count">0 / 1,000</span></div></section>
     <div class="form-submit"><label class="consent"><input name="consent" type="checkbox" required><span>${demo ? '입력한 데모 정보가 이 브라우저에 저장됨을 확인했습니다.' : '입력한 신청 정보와 저장 방식 안내를 확인했습니다.'} <b>*</b></span></label>${privacyConsent()}<p class="inline-error" id="application-error" role="alert" hidden></p><button type="submit" class="button primary submit-button">상담 신청하기 ${icon('arrow')}</button><p class="submit-note">${icon('shield')} 신청 후 NPU 기업의 승인을 거쳐 매칭이 확정됩니다.</p></div>
@@ -143,7 +150,7 @@ export function providerMatchingPage(providerId, requests, p = providerById(prov
   const scheduleTimes = [...TIMES, ...previousTimes];
   return pageHeading('MATCHING SCHEDULE', e(p.name) + ' 매칭 현황', '확정된 상담을 시간대별로 확인하세요. 상담을 누르면 상세 내용을 볼 수 있습니다.', '<button id="refresh-matching" class="button secondary">' + icon('reset') + ' 새로고침</button>') + capacitySettings(p, requests) +
     `<section class="panel matching-panel" aria-label="${e(p.name)} 확정 상담 시간표">
-      <div class="panel-heading"><div><h2>비즈매칭 시간표 <span class="count-pill">${confirmed.length}건 확정</span></h2><p>15:50–16:30 · 10분 단위 · 시간대별 정원 적용</p></div><span class="badge confirmed"><i></i> 매칭확정</span></div>
+      <div class="panel-heading"><div><h2>비즈매칭 시간표 <span class="count-pill">${confirmed.length}건 확정</span></h2><p>${scheduleRange()} · 10분 단위 · 시간대별 정원 적용</p></div><span class="badge confirmed"><i></i> 매칭확정</span></div>
       <table class="matching-table">
         <caption class="sr-only">${e(p.name)} 시간대별 확정 상담 목록</caption>
         <thead><tr><th scope="col">상담 시간</th><th scope="col">확정 / 정원</th><th scope="col">상담 기업 및 내용</th></tr></thead>
@@ -172,9 +179,9 @@ export function providerRequests(requests) {
   return requests.map(row => `<article class="request-card"><div class="request-card-head"><span class="company-avatar">${e(row.itsCompany.slice(0, 1))}</span><div><h3>${e(row.itsCompany)}</h3><small>${dateText(row.createdAt)} 신청</small></div>${badge(row.status)}</div><div class="request-meta"><span>${icon('clock')} ${e(row.time)}</span><span>${icon('users')} ${e(row.attendees)}명</span></div><p class="request-description">${e(row.details)}</p><div class="request-card-footer"><button class="text-button" data-detail="${e(row.id)}">상세 보기 ${icon('chevron')}</button>${row.status === STATUS.PENDING ? '<div class="decision-buttons"><button class="button secondary small" data-decision="' + STATUS.REJECTED + '" data-id="' + e(row.id) + '">거절</button><button class="button primary small" data-decision="' + STATUS.CONFIRMED + '" data-id="' + e(row.id) + '">' + icon('check') + ' 승인</button></div>' : '<span class="muted">처리 완료</span>'}</div></article>`).join('');
 }
 export function capacitySettings(provider, requests) {
-  return `<section class="panel capacity-settings per-slot-settings"><div><span class="eyebrow gray">CAPACITY BY TIME</span><h2>시간대별 최대 상담 건수</h2><p>변경할 시간대의 정원을 입력하고 저장해 주세요. 각 시간대에 독립적으로 적용됩니다.</p><p class="capacity-hint">0~50건 · 0건은 해당 시간 접수 중단 · 확정된 상담 수보다 낮게 설정할 수 없습니다.</p></div><div class="slot-capacity-list">${TIMES.map((time, index) => {
+  return `<section class="panel capacity-settings per-slot-settings"><div><span class="eyebrow gray">CAPACITY BY TIME</span><h2>시간대별 최대 상담 건수</h2><p>변경할 시간대의 정원을 입력하고 저장해 주세요. 각 시간대에 독립적으로 적용됩니다.</p><p class="capacity-hint">0~2건 · 0건은 해당 시간 접수 중단 · 확정된 상담 수보다 낮게 설정할 수 없습니다.</p></div><div class="slot-capacity-list">${TIMES.map((time, index) => {
     const confirmed = requests.filter(row => row.time === time && row.status === STATUS.CONFIRMED).length;
-    return `<form class="slot-capacity-form" data-time="${e(time)}"><input type="hidden" name="time" value="${e(time)}"><div class="slot-capacity-time"><strong>${e(time)}</strong><span>현재 확정 ${confirmed}건${isSlotOpen(provider, time) ? '' : ' · 운영 중단'}</span></div><label class="field" for="slot-capacity-${index}"><span class="sr-only">${e(time)} 최대 상담 건수</span><div class="capacity-input"><input id="slot-capacity-${index}" name="capacity" type="number" min="0" max="50" step="1" value="${capacityFor(provider, time)}" required><span>건</span></div></label><button class="button primary small" type="submit" aria-label="${e(time)} 정원 저장">저장</button><p id="slot-capacity-error-${index}" class="inline-error" role="alert" hidden></p></form>`;
+    return `<form class="slot-capacity-form" data-time="${e(time)}"><input type="hidden" name="time" value="${e(time)}"><div class="slot-capacity-time"><strong>${e(time)}</strong><span>현재 확정 ${confirmed}건${isSlotOpen(provider, time) ? '' : ' · 운영 중단'}</span></div><label class="field" for="slot-capacity-${index}"><span class="sr-only">${e(time)} 최대 상담 건수</span><div class="capacity-input"><input id="slot-capacity-${index}" name="capacity" type="number" min="0" max="2" step="1" value="${capacityFor(provider, time)}" required><span>건</span></div></label><button class="button primary small" type="submit" aria-label="${e(time)} 정원 저장">저장</button><p id="slot-capacity-error-${index}" class="inline-error" role="alert" hidden></p></form>`;
   }).join('')}</div></section>`;
 }
 
@@ -186,10 +193,10 @@ export function adminLogin() {
 
 export function adminPage(requests, providers = PROVIDERS, history = []) {
   const allTimes = [...TIMES, ...new Set([...requests, ...history].map(row => row.time).filter(time => time && !TIMES.includes(time)))];
-  return pageHeading('OPERATIONS OVERVIEW', '비즈매칭 운영 대시보드', '남은 상담 자리와 모든 처리 기록을 한눈에 확인하세요.', '<div class="admin-page-actions"><button id="refresh-admin" class="button secondary">' + icon('reset') + ' 새로고침</button><button id="admin-logout" class="text-button">로그아웃</button></div>') +
+  return pageHeading('OPERATIONS OVERVIEW', '비즈매칭 운영 대시보드', '남은 상담 자리와 모든 처리 기록을 한눈에 확인하세요.', '<div class="admin-page-actions"><button id="extend-schedule" class="button primary">상담 시간 +10분 연장</button><button id="refresh-admin" class="button secondary">' + icon('reset') + ' 새로고침</button><button id="admin-logout" class="text-button">로그아웃</button></div>') +
     stats(requests) + adminProgress(requests, providers) +
-    `<section class="panel admin-list history-panel"><div class="panel-heading"><div><h2>전체 활동 로그 <span class="count-pill">${history.length}</span></h2><p>신청·취소·승인·거절·시간별 정원 변경을 하나의 로그로 확인합니다.</p></div></div>
-    <form id="history-filters" class="filters unified-log-filters" role="search"><label class="filter-search"><span class="sr-only">활동 로그 검색</span>${icon('search')}<input name="query" placeholder="신청ID / 기업명 / 담당자 검색" aria-label="활동 로그 검색"></label><label><span class="sr-only">NPU 기업</span><select name="provider">${options(providers, '모든 NPU 기업')}</select></label><label><span class="sr-only">상담 시간</span><select name="time">${options(allTimes, '모든 시간')}</select></label><label><span class="sr-only">처리 유형</span><select name="action">${options(['신청', '취소', '승인', '거절', '정원 변경', '기존 상태'], '모든 처리')}</select></label><label><span class="sr-only">시간 정렬</span><select name="order"><option value="desc">최신순</option><option value="asc">오래된 순</option></select></label><button class="icon-button" type="reset" aria-label="로그 필터 초기화">${icon('reset')}</button></form>
+    `<section class="panel admin-list history-panel"><div class="panel-heading"><div><h2>전체 활동 로그 <span class="count-pill">${history.length}</span></h2><p>신청·취소·승인·거절·정원 변경·시간 연장을 하나의 로그로 확인합니다.</p></div></div>
+    <form id="history-filters" class="filters unified-log-filters" role="search"><label class="filter-search"><span class="sr-only">활동 로그 검색</span>${icon('search')}<input name="query" placeholder="신청ID / 기업명 / 담당자 검색" aria-label="활동 로그 검색"></label><label><span class="sr-only">NPU 기업</span><select name="provider">${options(providers, '모든 NPU 기업')}</select></label><label><span class="sr-only">상담 시간</span><select name="time">${options(allTimes, '모든 시간')}</select></label><label><span class="sr-only">처리 유형</span><select name="action">${options(['신청', '취소', '승인', '거절', '정원 변경', '시간 연장', '기존 상태'], '모든 처리')}</select></label><label><span class="sr-only">시간 정렬</span><select name="order"><option value="desc">최신순</option><option value="asc">오래된 순</option></select></label><button class="icon-button" type="reset" aria-label="로그 필터 초기화">${icon('reset')}</button></form>
     <p class="history-note">기록된 처리 시각을 기준으로 정렬합니다. 시각이 없는 기존 상태는 로그 끝에 표시하며, 신청ID를 누르면 현재 신청 상세를 볼 수 있습니다.</p>
     <div id="history-results">${adminHistoryRows(history, requests)}</div></section>`;
 }
@@ -215,7 +222,7 @@ export function adminHistoryRows(events, requests = [], order = 'desc') {
   const known = events.filter(event => event.occurredAt);
   const sorted = [...(order === 'asc' ? known.reverse() : known), ...events.filter(event => !event.occurredAt)];
   const requestMap = new Map(requests.map(row => [row.id, row]));
-  const timestamp = value => value ? new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }).format(new Date(value)) : '처리 시각 미기록';
+  const timestamp = value => value ? logDateFormatter.format(new Date(value)) : '처리 시각 미기록';
   return `<div class="table-scroll"><table class="requests-table history-table"><caption class="sr-only">시간순 전체 활동 로그</caption><thead><tr><th scope="col">처리 시각 / 유형</th><th scope="col">신청ID / ITS 기업</th><th scope="col">NPU / 상담 시간</th><th scope="col">처리자</th><th scope="col">변경 내용</th></tr></thead><tbody>${sorted.map(event => {
     const request = requestMap.get(event.requestId);
     return `<tr data-log-id="${e(event.id)}" data-occurred-at="${e(event.occurredAt || '')}">
@@ -223,7 +230,7 @@ export function adminHistoryRows(events, requests = [], order = 'desc') {
     <td class="request-id-cell">${event.requestId ? '<button type="button" class="text-button request-id" data-detail="' + e(event.requestId) + '">' + e(event.requestId) + '</button><strong>' + e(event.itsCompany) + '</strong>' + (request ? '<small>' + e(request.contactName) + ' · ' + request.attendees + '명</small>' : '') : '<span class="muted">신청ID 없음 · 기업 설정</span>'}</td>
     <td>${e(providerById(event.providerId).name)}<small>${e(event.time || '모든 시간대 · 이전 설정')}</small></td>
     <td class="history-actor">${e(event.actor)}</td>
-    <td>${event.action === '정원 변경' ? '<span class="history-change">최대 ' + event.beforeCapacity + '건 → ' + event.afterCapacity + '건</span>' : '<div class="history-status"><small>' + e(event.action === '기존 상태' ? '기존 저장 상태' : (event.fromStatus || '신규 신청') + ' →') + '</small>' + badge(event.toStatus) + '</div>'}</td>
+    <td>${event.action === '시간 연장' ? '<span class="history-change">10분 추가 · 정원 2건</span>' : event.action === '정원 변경' ? '<span class="history-change">최대 ' + event.beforeCapacity + '건 → ' + event.afterCapacity + '건</span>' : '<div class="history-status"><small>' + e(event.action === '기존 상태' ? '기존 저장 상태' : (event.fromStatus || '신규 신청') + ' →') + '</small>' + badge(event.toStatus) + '</div>'}</td>
   </tr>`;
   }).join('')}</tbody></table></div><div class="table-footer">총 <strong>${events.length}</strong>건의 로그 · ${order === 'asc' ? '오래된 순' : '최신순'}</div>`;
 }
@@ -235,9 +242,9 @@ export function homePage() {
       <a href="#home" class="brand" aria-label="K-NPU Connect 첫 화면"><span class="brand-symbol">K<span>↗</span></span><span>K-NPU <strong>Connect</strong><small>BUSINESS MATCHING PLATFORM</small></span></a>
       <span class="welcome-organizer">ITS <b>KOREA</b></span>
     </header>
-    <section class="welcome-intro" aria-labelledby="welcome-title">
+    <div class="event-utility">2026 강릉 ITS 세계총회 <span>Beyond Mobility, Connected World · October 19–23, 2026</span></div><section class="welcome-intro" aria-labelledby="welcome-title">
       <span class="welcome-event"><span class="live-dot"></span> 강릉 K-NPU 전환 밋업</span>
-      <h1 id="welcome-title">ITS와 NPU,<br><em>새로운 협력을 연결합니다.</em></h1>
+      <h1 id="welcome-title">K-NPU Business Meeting<br><em>ITS와 NPU의 협력을 연결합니다.</em></h1>
       <p>ITS 기업의 현장 과제와 NPU 기업의 기술을 잇는<br class="desktop-break"> 1:1 비즈매칭 프로그램입니다.<br>상담을 통해 AI 전환의 가능성과 협력 기회를 만나보세요.</p>
     </section>
     <section class="welcome-selection" aria-labelledby="selection-title">
@@ -247,13 +254,13 @@ export function homePage() {
         <a href="#apply" class="role-choice its-choice" aria-label="ITS 기업으로 상담 신청하기">
           <div class="role-choice-top"><span class="role-choice-icon">${icon('building')}</span><span class="role-choice-label">ITS COMPANY</span></div>
           <h3>ITS 기업입니다</h3>
-          <p>NPU 파트너를 찾고<br>1:1 비즈매칭 상담을 신청합니다.</p>
+          <p>NPU 파트너를 찾고<br> 1:1 비즈매칭 상담을 신청합니다.</p>
           <span class="role-choice-action">상담 신청하기 ${icon('arrow')}</span>
         </a>
         <a href="#npu" class="role-choice npu-choice" aria-label="NPU 기업으로 상담 신청 확인하기">
           <div class="role-choice-top"><span class="role-choice-icon">${icon('grid')}</span><span class="role-choice-label">NPU COMPANY</span></div>
           <h3>NPU 기업입니다</h3>
-          <p>우리 기업에 들어온 상담 신청을 확인하고<br>승인 또는 거절합니다.</p>
+          <p>우리 기업에 들어온 상담 신청을 확인하고<br> 승인 또는 거절합니다.</p>
           <span class="role-choice-action">상담 신청 확인하기 ${icon('arrow')}</span>
         </a>
       </div>
@@ -359,4 +366,15 @@ export function brochureCards(items = BROCHURES) {
 }
 export function brochuresPage() {
   return pageHeading('NPU PARTNERS', 'NPU 기업 소개자료', '상담 전에 NPU 파트너의 기업과 기술을 살펴보세요.') + brochureCards();
+}
+
+export function scheduleRange() {
+  return TIMES.length ? TIMES[0].slice(0,5) + '–' + TIMES.at(-1).slice(-5) : '운영 시간 확인 중';
+}
+export function extensionDialog(lastTime) {
+  const match = /– (\d{2}):(\d{2})$/.exec(lastTime || '');
+  const end = match ? Number(match[1])*60+Number(match[2]) : 1440;
+  const hhmm = n => String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+  const next = end+10 < 1440 ? hhmm(end)+' – '+hhmm(end+10) : '날짜 경계: 연장 불가';
+  return '<h2 id="dialog-title">상담 시간을 연장하시겠습니까?</h2><dl class="extension-summary"><div><dt>현재 마지막 상담</dt><dd>'+e(lastTime)+'</dd></div><div><dt>추가 상담</dt><dd>'+e(next)+'</dd></div></dl><p class="dialog-description">4개 NPU 기업에 동일하게 10분 상담시간이 추가됩니다. 새 시간대의 정원은 기업별 2건입니다.</p><p id="dialog-error" class="inline-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button secondary" data-close-dialog>취소</button><button type="button" class="button primary" id="confirm-extension" '+(end+10>=1440?'disabled':'')+'>10분 연장</button></div>';
 }

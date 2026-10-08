@@ -65,7 +65,7 @@ try{
  await tick(npu,5100,'getProviderRevision');calls(npu,'unchanged-provider',['getProviderRevision']);
  await tick(admin,10100,'getAdminRevision');calls(admin,'unchanged-admin',['getAdminRevision']);
  assert.equal(h.counters.batchGets,reads);
- const draft=npu.page.locator('.slot-capacity-form [name="capacity"]').nth(1);await draft.fill('17');
+ const draft=npu.page.locator('.slot-capacity-form [name="capacity"]').nth(1);await draft.fill('1');
  await admin.page.locator('#history-filters [name="query"]').fill('실시간 모바일');
  await admin.page.locator('#history-filters [name="provider"]').selectOption('deepx');
  await admin.page.locator('#history-filters [name="time"]').selectOption(h.time);
@@ -83,7 +83,7 @@ try{
  await tick(npu,5100,'getProviderRevision');
  await npu.page.locator('[data-detail="'+id+'"]').waitFor();
  calls(npu,'new-application-provider',['getProviderRevision','getProviderRequests']);
- assert.equal(await draft.inputValue(),'17');
+ assert.equal(await draft.inputValue(),'1');
  assert.match(await npu.page.locator('#toast').innerText(),/새 상담 신청/);
  await tick(admin,10100,'getAdminRevision');
  await admin.page.locator('#history-results [data-detail="'+id+'"]').waitFor();
@@ -98,29 +98,29 @@ try{
  await tick(admin,10100,'getAdminRevision');
  assert.equal(await admin.page.locator('#result-dialog [data-popup-request="'+id+'"] .badge.confirmed').count(),1);
  assert.match(await admin.page.locator('.stat-card.confirmed strong').innerText(),/^1/);
- assert.match(await slot(admin).innerText(),/확정 1 \/ 정원 5/);
+ assert.match(await slot(admin).innerText(),/확정 1 \/ 정원 2/);
  assert.match(await admin.page.locator('#history-results').innerText(),/승인/);
  calls(admin,'approval-popup-sync',['getAdminRevision','getAdminOverview']);
  // Capacity changes also reach the open slot popup and the total remaining row.
- const form=npu.page.locator('.slot-capacity-form').first();await form.locator('[name="capacity"]').fill('7');await form.locator('button').click();
- await npu.page.waitForFunction(()=>document.querySelectorAll('.slot-capacity-form input[name="capacity"]')[0]?.defaultValue==='7');
+ const form=npu.page.locator('.slot-capacity-form').first();await form.locator('[name="capacity"]').fill('1');await form.locator('button').click();
+ await npu.page.waitForFunction(()=>document.querySelectorAll('.slot-capacity-form input[name="capacity"]')[0]?.defaultValue==='1');
  await tick(admin,10100,'getAdminRevision');
- assert.match(await slot(admin).innerText(),/잔여 6/);assert.match(await slot(admin).innerText(),/정원 7/);
- assert.match(await admin.page.locator('#result-dialog .slot-dialog-summary').innerText(),/정원\s+7건/);
+ assert.match(await slot(admin).innerText(),/잔여 0/);assert.match(await slot(admin).innerText(),/정원 1/);
+ assert.match(await admin.page.locator('#result-dialog .slot-dialog-summary').innerText(),/정원\s+1건/);
  calls(admin,'capacity-popup-sync',['getAdminRevision','getAdminOverview']);
- assert.equal(await draft.inputValue(),'17');
+ assert.equal(await draft.inputValue(),'1');
  // Keep a request detail open while mobile cancels the confirmed application.
  await admin.page.locator('[data-popup-request="'+id+'"]').click();
  await mobile.page.locator('#go-lookup').click();await mobile.page.locator('#cancel-request').click();await mobile.page.locator('#confirm-action').click();
  await mobile.page.locator('#lookup-result .badge.cancelled').waitFor();
  await tick(admin,10100,'getAdminRevision');
  assert.equal(await admin.page.locator('#result-dialog .badge.cancelled').count(),1);
- assert.match(await slot(admin).innerText(),/잔여 7/);
+ assert.match(await slot(admin).innerText(),/잔여 1/);
  calls(admin,'cancel-request-popup-sync',['getAdminRevision','getAdminOverview']);
  // Direct log details (not only the slot popup) update too.
  await admin.page.locator('[data-close-dialog]').click();
  await admin.page.locator('#history-results [data-detail="'+id+'"]').first().click();
- good('updateProviderCapacity',{token:h.provider('deepx'),time:h.time,capacity:8});
+ good('updateProviderCapacity',{token:h.provider('deepx'),time:h.time,capacity:2});
  await tick(admin,10100,'getAdminRevision');
  assert.equal(await admin.page.locator('#result-dialog .detail-id').innerText(),id);
  calls(admin,'direct-detail-preserved',['getAdminRevision','getAdminOverview']);
