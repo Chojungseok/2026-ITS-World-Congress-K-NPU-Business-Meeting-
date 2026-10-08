@@ -77,7 +77,7 @@ test('each normal API snapshot uses one batch read; public availability reads on
    assert.equal(h.counters.rangeReads-before.rangeReads,0,action);
    assert.equal(h.counters.opens-before.opens,0,action);
  }
- assert.deepEqual(captured[0].filter(r=>r.startsWith("'상담신청'")),["'상담신청'!A1:P1","'상담신청'!G2:G","'상담신청'!I2:I","'상담신청'!L2:L"]);
+ assert.deepEqual(captured[0].filter(r=>r.startsWith("'상담신청'")),["'상담신청'!A1:Q1","'상담신청'!G2:G","'상담신청'!I2:I","'상담신청'!L2:L"]);
  assert.equal(new Set(captured[2]).size,4);
  const db=h.context.database_(['providers','capacities']),before=h.counters.batchGets;
  h.context.provider_(db,'deepx',true);h.context.slot_(db,'deepx',h.time);h.context.config_(db);

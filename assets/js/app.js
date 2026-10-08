@@ -23,6 +23,7 @@ let currentProviders = [];
 let activeAdminSlot = null;
 let activeRequestDetail = null;
 let lookupRow = null;
+let lookupPrefill = null; // ID-finder email is reused in memory only.
 let toastTimer;
 let renderVersion = 0;
 let availabilityVersion = 0;
@@ -43,7 +44,7 @@ const pollingConfig = RUNTIME_CONFIG.revisionPolling || {
   providerMs: RUNTIME_CONFIG.refreshIntervalMs, adminMs: RUNTIME_CONFIG.refreshIntervalMs,
   retryMs: RUNTIME_CONFIG.refreshIntervalMs
 };
-const titles = { home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
+const titles = { home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', 'find-id': '신청 ID 찾기', brochures: 'NPU 기업 소개자료', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
 
 function toast(message, isError = false) {
   const element = $('#toast');
@@ -190,12 +191,14 @@ function bindApply() {
   summary();
 }
 function bindLookup() {
-  const form = $('#lookup-form');
+  const form = $('#lookup-form'), version = renderVersion;
   if (lookupRow) {
     form.elements.id.value = lookupRow.id;
     form.elements.email.value = lookupRow.email;
     showLookup(lookupRow);
   }
+  const prefill = lookupPrefill; lookupPrefill = null;
+  if (prefill) { form.elements.id.value = prefill.id; form.elements.email.value = prefill.email; }
   if (api.mode === 'mock') $('#fill-example').onclick = () => {
     form.elements.id.value = 'DEMO-0001';
     form.elements.email.value = 'demo1@example.com';
@@ -208,13 +211,41 @@ function bindLookup() {
       $('#lookup-result').innerHTML = view.empty('신청을 조회하고 있습니다', '잠시만 기다려 주세요.');
       try {
         const row = await api.findRequest(Object.fromEntries(new FormData(form)));
+        if (version !== renderVersion || !form.isConnected) return;
         lookupRow = row;
         showLookup(row);
       } catch (error) {
+        if (version !== renderVersion || !form.isConnected) return;
         $('#lookup-result').innerHTML = view.empty('신청 정보를 확인해 주세요', '신청ID와 신청 이메일을 확인해 주세요.');
         throw error;
       }
     }, '#lookup-error');
+  });
+  if (prefill) form.requestSubmit();
+}
+function bindFindIds() {
+  const form = $('#find-ids-form'), version = renderVersion;
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const input = Object.fromEntries(new FormData(form));
+    busy($('button[type="submit"]', form), async () => {
+      $('#find-ids-result').innerHTML = view.empty('신청ID를 찾고 있습니다', '잠시만 기다려 주세요.');
+      try {
+        const rows = await api.findRequestIds(input);
+        if (version !== renderVersion || !form.isConnected) return;
+        const result = $('#find-ids-result'); result.innerHTML = view.foundRequestIds(rows);
+        result.onclick = event => {
+          const button = event.target.closest('[data-found-id]');
+          if (!button) return;
+          lookupRow = null; lookupPrefill = { id: button.dataset.foundId, email: input.email.trim().toLowerCase() };
+          location.hash = 'lookup';
+        };
+      } catch (error) {
+        if (version !== renderVersion || !form.isConnected) return;
+        $('#find-ids-result').innerHTML = view.empty('신청자 정보를 확인해 주세요', '입력하신 정보와 일치하는 신청을 찾을 수 없습니다.');
+        throw error;
+      }
+    }, '#find-ids-error');
   });
 }
 function showLookup(row) {
@@ -366,6 +397,21 @@ main.addEventListener('click', event => {
     const row = currentRows.find(item => item.id === decisionButton.dataset.id);
     if (!row) return;
     const approved = decisionButton.dataset.decision === STATUS.CONFIRMED;
+    if (!approved) {
+      showDialog(view.rejectionDialog(row));
+      $('#reject-request-form').addEventListener('submit', event => {
+        event.preventDefault();
+        const form = event.currentTarget, reason = form.elements.rejectionReason.value.trim();
+        if (!reason || reason.length > 500) {
+          errorAt('#dialog-error', new Error('거절 사유를 1~500자로 입력해 주세요.')); return;
+        }
+        busy($('button[type="submit"]', form), async () => {
+          await api.decideRequest({ token: providerToken, id: row.id, decision: STATUS.REJECTED, rejectionReason: reason });
+          await refresh({ force: true }); dialog.close(); toast('상담 신청을 거절했습니다.');
+        }, '#dialog-error');
+      });
+      return;
+    }
     confirmAction({
       title: approved ? '이 상담을 승인할까요?' : '이 상담을 거절할까요?',
       description: row.itsCompany + ' · ' + row.time + (approved ? ' 상담을 매칭확정으로 변경합니다. 승인 시 정원을 다시 확인합니다.' : ' 상담을 매칭거절로 변경합니다.'),
@@ -384,7 +430,7 @@ async function renderRoute(focus = true) {
   const newRoute = location.hash.replace('#', '');
   route = titles[newRoute] ? newRoute : 'home';
   document.body.classList.toggle('home-screen', route === 'home');
-  const itsScreen = route === 'apply' || route === 'lookup';
+  const itsScreen = ['apply', 'lookup', 'find-id', 'brochures'].includes(route);
   const providerScreen = route === 'npu' || route === 'matching';
   $('#sidebar .management-label').hidden = itsScreen;
   $('#sidebar .management-label').textContent = providerScreen ? 'NPU 파트너' : '파트너 & 운영';
@@ -410,6 +456,8 @@ async function renderRoute(focus = true) {
   main.dataset.loading = 'true';
   try {
     if (route === 'home') main.innerHTML = view.homePage();
+    if (route === 'brochures') main.innerHTML = view.brochuresPage();
+    if (route === 'find-id') { lookupRow = null; main.innerHTML = view.findIdsPage(); bindFindIds(); }
     if (route === 'apply') {
       main.innerHTML = view.applyPage(); bindApply();
       // Form fields are usable before GAS responds; submission waits for config and slots.

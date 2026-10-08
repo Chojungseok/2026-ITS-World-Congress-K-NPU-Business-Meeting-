@@ -68,7 +68,7 @@ test('NPU 조회와 처리는 자신의 기업으로 제한되고 관리자 세�
 test('최종 상태 재처리 및 취소된 신청 승인을 거부한다', async () => {
   const row = await api.submitRequest(form());
   const token = await api.authenticateProvider({ providerId: 'deepx', approvalCode: 'deepx20261022' });
-  await api.decideRequest({ token, id: row.id, decision: STATUS.REJECTED });
+  await api.decideRequest({ token, id: row.id, decision: STATUS.REJECTED, rejectionReason: '기존 회귀 검사용 사유' });
   await assert.rejects(api.decideRequest({ token, id: row.id, decision: STATUS.CONFIRMED }), /이미 처리/);
   await assert.rejects(api.cancelRequest({ id: row.id, email: row.email }), /이미 처리/);
   const second = await api.submitRequest(form({ email: 'second@example.com' }));
@@ -95,7 +95,7 @@ test('HTML 특수문자는 화면 삽입 시 이스케이프된다', () => {
 });
 
 test('새 시간표만 신청할 수 있고 개인정보 동의 이력을 저장한다', async () => {
-  assert.deepEqual(TIMES, ['16:50 – 17:00', '17:00 – 17:10', '17:10 – 17:20', '17:20 – 17:30']);
+  assert.deepEqual(TIMES, ['15:50 – 16:00', '16:00 – 16:10', '16:10 – 16:20', '16:20 – 16:30']);
   await assert.rejects(api.submitRequest(form({ time: '13:00 – 13:30' })), /시간/);
   const row = await api.submitRequest(form());
   assert.equal(row.privacyConsent, true);
@@ -240,7 +240,7 @@ test('신청·승인·취소 및 거절 이력을 신청ID와 시각으로 보�
   await api.cancelRequest({ id: row.id, email: row.email });
   await assert.rejects(api.decideRequest({ token, id: row.id, decision: STATUS.CONFIRMED }));
   const rejected = await api.submitRequest(form({ email: 'reject@example.com' }));
-  await api.decideRequest({ token, id: rejected.id, decision: STATUS.REJECTED });
+  await api.decideRequest({ token, id: rejected.id, decision: STATUS.REJECTED, rejectionReason: '기존 회귀 검사용 사유' });
   const history = (await api.getAdminOverview(admin)).history;
   const events = history.filter(event => event.requestId === row.id);
   assert.deepEqual(events.map(event => event.action), ['취소', '승인', '신청']);

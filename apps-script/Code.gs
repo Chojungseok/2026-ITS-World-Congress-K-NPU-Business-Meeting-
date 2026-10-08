@@ -24,7 +24,7 @@ function handle_(method, input) {
       fail_('METHOD_NOT_ALLOWED', '이 기능은 POST 요청이 필요합니다.');
     // Mutations/auth counters keep the same common lock. Pure reads do not queue behind them.
     var lockedActions = ['submitRequest', 'cancelRequest', 'decideRequest', 'updateProviderCapacity',
-      'authenticateProvider', 'authenticateAdmin', 'logout', 'findRequest'];
+      'authenticateProvider', 'authenticateAdmin', 'logout', 'findRequest', 'findRequestIds'];
     var data = lockedActions.includes(input.action)
       ? withLock_(function() { return dispatch_(input); }) : dispatch_(input);
     return { ok: true, data: data == null ? null : data };
@@ -50,6 +50,7 @@ function dispatch_(input) {
     case 'getAvailabilityRevision': return availabilityRevision_(input.providerId);
     case 'getAvailability': return availability_(availabilitySnapshot_(), input.providerId);
     case 'submitRequest': return submit_(database_(['providers', 'capacities', 'requests']), input);
+    case 'findRequestIds': return findRequestIds_(database_(), input);
     case 'findRequest': return publicRow_(verifiedRequest_(database_(), input));
     case 'cancelRequest': return cancel_(database_(['requests', 'capacities']), input);
     case 'authenticateProvider': return authenticateProvider_(database_(['providers']), input);

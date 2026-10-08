@@ -11,7 +11,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT m
 const url = 'http://127.0.0.1:' + port;
 const projectId = createHash('sha256').update(root).digest('hex').slice(0, 16);
 const shouldOpen = process.argv.includes('--open');
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.pdf': 'application/pdf' };
 
 function openBrowser() {
   const [command, args] = process.platform === 'win32'

@@ -117,3 +117,33 @@ function verifiedRequest_(db, input) {
   cache.remove(key);
   return row;
 }
+
+function findRequestIds_(db, input) {
+  // Ephemeral verification only. Never write submitted identity or matches to DB/properties/logs.
+  var missing = function() { fail_('NOT_FOUND', '입력하신 정보와 일치하는 신청을 찾을 수 없습니다.'); };
+  function normalized(value, max) {
+    if (typeof value !== 'string' || !value.trim() || value.trim().length > max) missing();
+    return value.trim();
+  }
+  var company = normalized(input.itsCompany, 80), contact = normalized(input.contactName, 40);
+  var phone = normalized(input.phone, 24).replace(/\D/g, '');
+  var email = normalized(input.email, 120).toLowerCase();
+  if (!phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) missing();
+  // Email bucket is stable even if the other three fields are varied. Count successes
+  // as well as misses; only an opaque keyed hash and count live in the short-lived cache.
+  var cache = CacheService.getScriptCache(), key = 'FIND_IDS_' + hmac_('find-ids:' + email);
+  var attempts = Number(cache.get(key) || 0);
+  if (attempts >= 10) fail_('RATE_LIMITED', '조회 시도가 많습니다. 15분 후 다시 시도해 주세요.');
+  cache.put(key, String(attempts + 1), 900); // Protected by the same lookup lock.
+  var rows = rows_(db, 'requests').filter(function(r) {
+    return String(r.itsCompany).trim() === company && String(r.contactName).trim() === contact &&
+      String(r.phone).replace(/\D/g, '') === phone && String(r.email).trim().toLowerCase() === email;
+  });
+  if (!rows.length) missing();
+  rows.sort(function(a, b) { return Date.parse(b.createdAt) - Date.parse(a.createdAt) || b._row - a._row; });
+  return rows.map(function(r) {
+    var provider = KN.providers.find(function(p) { return p.id === r.providerId; });
+    return { id: r.id, createdAt: r.createdAt, providerName: r.providerName || (provider && provider.name) || '',
+      time: r.time, status: r.status };
+  });
+}

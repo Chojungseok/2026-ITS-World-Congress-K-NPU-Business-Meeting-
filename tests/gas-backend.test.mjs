@@ -137,8 +137,8 @@ test('rejection/cancellation transitions, disabled slots and repeat decisions ke
   denied(h,'decideRequest',{token,id:row.id,decision:'매칭확정'},'CAPACITY_FULL');
   denied(h,'submitRequest',h.form({email:'other@example.com'}),'CAPACITY_FULL');
   assert.equal(good(h,'getAvailability',{providerId:'deepx'})[0].active,false);
-  good(h,'decideRequest',{token,id:row.id,decision:'매칭거절'});
-  good(h,'decideRequest',{token,id:row.id,decision:'매칭거절'});
+  good(h,'decideRequest',{token,id:row.id,decision:'매칭거절',rejectionReason:'기존 회귀 검사용 사유'});
+  good(h,'decideRequest',{token,id:row.id,decision:'매칭거절',rejectionReason:'기존 회귀 검사용 사유'});
   denied(h,'cancelRequest',{id:row.id,email:row.email},'INVALID_STATE');
   denied(h,'decideRequest',{token,id:row.id,decision:'매칭확정'},'INVALID_STATE');
   assert.deepEqual(good(h,'getAdminOverview',{token:h.adminToken()}).history.map(e=>e.action),['거절','신청']);

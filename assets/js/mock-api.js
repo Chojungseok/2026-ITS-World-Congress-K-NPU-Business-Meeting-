@@ -1,7 +1,8 @@
-import { STATUS, PROVIDERS, TIMES, LEGACY_TIMES, PRIVACY_NOTICE_VERSION, STORAGE_KEY, providerById } from './config.js';
+import { STATUS, PROVIDERS, TIMES, LEGACY_TIMES, PREVIOUS_TIMES, PRIVACY_NOTICE_VERSION, STORAGE_KEY, providerById } from './config.js';
 
 let queue = Promise.resolve();
 const sessions = new Map();
+const findIdAttempts = new Map();
 // 로컬 기능 확인 전용 코드입니다. 운영 연결 시 이 모의 API를 서버 인증 어댑터로 교체합니다.
 const LOCAL_APPROVAL_CODES = Object.freeze({
   deepx: 'deepx20261022',
@@ -13,7 +14,7 @@ const LOCAL_ADMIN = Object.freeze({ id: 'ITSKOREA9911', password: 'ITSKOREA9911!
 const defaultCapacities = () => Object.fromEntries(PROVIDERS.map(p => [p.id, p.capacity]));
 const slotDefaults = capacities => Object.fromEntries(PROVIDERS.map(p => [p.id, Object.fromEntries(TIMES.map(time => [time, capacities[p.id]]))]));
 const capacityAt = (data, providerId, time) => data.slotCapacities[providerId][time] ?? data.capacities[providerId];
-const configuredProviders = data => PROVIDERS.map(p => ({ ...p, capacity: data.capacities[p.id], capacities: { ...data.slotCapacities[p.id] } }));
+const configuredProviders = data => PROVIDERS.map(p => ({ ...p, capacity: data.capacities[p.id], capacities: Object.fromEntries(TIMES.map(time => [time, capacityAt(data, p.id, time)])) }));
 const newestHistory = events => events.map((event, index) => ({ event, index })).sort((a, b) => {
   if (!a.event.occurredAt && !b.event.occurredAt) return b.index - a.index;
   if (!a.event.occurredAt) return 1;
@@ -98,7 +99,12 @@ function read() {
     if (data.capacities === undefined) { data.capacities = defaultCapacities(); upgraded = true; }
     if (!data.capacities || !PROVIDERS.every(p => validCapacity(data.capacities[p.id]))) throw new Error('invalid');
     if (data.slotCapacities === undefined) { data.slotCapacities = slotDefaults(data.capacities); upgraded = true; }
-    if (!data.slotCapacities || !PROVIDERS.every(p => data.slotCapacities[p.id] && TIMES.every(time => validCapacity(data.slotCapacities[p.id][time])))) throw new Error('invalid');
+    if (!data.slotCapacities || !PROVIDERS.every(p => data.slotCapacities[p.id] &&
+      typeof data.slotCapacities[p.id] === 'object' && Object.values(data.slotCapacities[p.id]).every(validCapacity))) throw new Error('invalid');
+    // Preserve previous slots, requests and history; add only missing current slots.
+    for (const p of PROVIDERS) for (const time of TIMES) if (data.slotCapacities[p.id][time] === undefined) {
+      data.slotCapacities[p.id][time] = p.capacity; upgraded = true;
+    }
     if (data.history === undefined) { data.history = baselineHistory(data.requests); upgraded = true; }
     if (!Array.isArray(data.history) || !data.history.every(validHistory)) throw new Error('invalid');
     if (upgraded) write(data);
@@ -110,7 +116,7 @@ function read() {
 }
 function validRecord(record) {
   return record && ['id', 'createdAt', 'itsCompany', 'contactName', 'phone', 'email', 'details'].every(key => typeof record[key] === 'string')
-    && !!providerById(record.providerId) && [...TIMES, ...LEGACY_TIMES].includes(record.time)
+    && !!providerById(record.providerId) && [...TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(record.time)
     && Object.values(STATUS).includes(record.status) && Number.isInteger(record.attendees) && record.attendees > 0;
 }
 function validHistory(event) {
@@ -118,7 +124,7 @@ function validHistory(event) {
     && typeof event.actor === 'string' && !!providerById(event.providerId)
     && (event.occurredAt === null || (typeof event.occurredAt === 'string' && Number.isFinite(Date.parse(event.occurredAt))))
     && (event.action === '정원 변경'
-      ? event.requestId === null && (event.time == null || TIMES.includes(event.time)) && validCapacity(event.beforeCapacity) && validCapacity(event.afterCapacity)
+      ? event.requestId === null && (event.time == null || [...TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(event.time)) && validCapacity(event.beforeCapacity) && validCapacity(event.afterCapacity)
       : typeof event.requestId === 'string' && typeof event.itsCompany === 'string' && typeof event.time === 'string'
         && Object.values(STATUS).includes(event.toStatus)
         && (event.fromStatus === null || Object.values(STATUS).includes(event.fromStatus)));
@@ -185,11 +191,31 @@ export const api = {
       if (count(data.requests, provider.id, input.time) >= capacityAt(data, provider.id, input.time)) fail(message.full);
       if (data.requests.some(row => row.email === email && row.itsCompany === itsCompany && row.providerId === provider.id && row.time === input.time && [STATUS.PENDING, STATUS.CONFIRMED].includes(row.status))) fail('동일한 기업·시간으로 진행 중인 신청이 있습니다. 신청 확인 메뉴를 이용해 주세요.');
       const createdAt = new Date().toISOString();
-      const record = { id: 'KN-' + uid().toUpperCase(), createdAt, itsCompany, contactName, phone, email, providerId: provider.id, time: input.time, attendees, details, status: STATUS.PENDING, privacyConsent: true, privacyConsentedAt: createdAt, privacyNoticeVersion: PRIVACY_NOTICE_VERSION };
+      const record = { id: 'KN-' + uid().toUpperCase(), createdAt, itsCompany, contactName, phone, email, providerId: provider.id, time: input.time, attendees, details, status: STATUS.PENDING, privacyConsent: true, privacyConsentedAt: createdAt, privacyNoticeVersion: PRIVACY_NOTICE_VERSION, rejectionReason: '' };
       data.requests.unshift(record);
       recordHistory(data, record, '신청', 'ITS · ' + record.itsCompany);
       return record;
     });
+  },
+  async findRequestIds(input = {}) {
+    const notFound = () => { throw Object.assign(new Error('입력하신 정보와 일치하는 신청을 찾을 수 없습니다.'), { code: 'NOT_FOUND' }); };
+    const clean = (value, max) => {
+      if (typeof value !== 'string' || !value.trim() || value.trim().length > max) notFound();
+      return value.trim();
+    };
+    const company = clean(input.itsCompany, 80), contact = clean(input.contactName, 40);
+    const phone = clean(input.phone, 24).replace(/\D/g, ''), email = clean(input.email, 120).toLowerCase();
+    if (!phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notFound();
+    const now = Date.now(), previous = findIdAttempts.get(email);
+    const attempt = previous && previous.until > now ? previous : { count: 0, until: now + 900000 };
+    if (attempt.count >= 10) throw Object.assign(new Error('조회 시도가 많습니다. 15분 후 다시 시도해 주세요.'), { code: 'RATE_LIMITED' });
+    attempt.count++; findIdAttempts.set(email, attempt);
+    const rows = read().requests.filter(row => row.itsCompany.trim() === company && row.contactName.trim() === contact &&
+      row.phone.replace(/\D/g, '') === phone && emailOf(row.email) === email);
+    if (!rows.length) notFound();
+    return rows.map((row, index) => ({ row, index })).sort((a, b) => Date.parse(b.row.createdAt) - Date.parse(a.row.createdAt) || a.index - b.index)
+      .map(({ row }) => ({ id: row.id, createdAt: row.createdAt, providerName: row.providerName || providerById(row.providerId).name,
+        time: row.time, status: row.status }));
   },
   async findRequest({ id, email }) {
     const row = findById(read().requests, id);
@@ -248,16 +274,18 @@ export const api = {
     const { providerId } = session(token, 'provider');
     return clone(read().requests.filter(row => row.providerId === providerId));
   },
-  async decideRequest({ token, id, decision }) {
+  async decideRequest({ token, id, decision, rejectionReason }) {
     const { providerId } = session(token, 'provider');
     if (![STATUS.CONFIRMED, STATUS.REJECTED].includes(decision)) fail('지원하지 않는 처리입니다.');
     return mutate(data => {
       const row = data.requests.find(item => item.id === id && item.providerId === providerId);
       if (!row) fail('이 기업의 신청을 찾을 수 없습니다.');
+      const reason = decision === STATUS.REJECTED ? textOf(rejectionReason, '거절 사유', 500) : '';
       if (row.status !== STATUS.PENDING) fail('이미 처리된 신청입니다. 목록을 새로고침해 주세요.');
+      if (decision === STATUS.CONFIRMED && !TIMES.includes(row.time)) fail('이전 상담 시간은 승인할 수 없습니다.');
       if (decision === STATUS.CONFIRMED && count(data.requests, providerId, row.time) >= capacityAt(data, providerId, row.time)) fail(message.full);
       const previousStatus = row.status;
-      row.status = decision;
+      row.status = decision; row.rejectionReason = reason; row.updatedAt = new Date().toISOString();
       recordHistory(data, row, decision === STATUS.CONFIRMED ? '승인' : '거절', 'NPU · ' + providerById(providerId).name, previousStatus);
       return row;
     });
@@ -272,6 +300,6 @@ export const api = {
     const reset = () => write(initialData());
     if (globalThis.navigator?.locks) await navigator.locks.request(STORAGE_KEY, reset);
     else await reset();
-    sessions.clear();
+    sessions.clear(); findIdAttempts.clear();
   }
 };

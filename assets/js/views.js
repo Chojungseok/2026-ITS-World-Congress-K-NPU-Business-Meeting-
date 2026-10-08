@@ -1,5 +1,6 @@
 import { PROVIDERS, TIMES, STATUS, providerById, capacityFor, isSlotOpen, PRIVACY_NOTICE } from './config.js';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+import { BROCHURES } from './brochures.js';
 const e = escapeHtml;
 let demo = true;
 export function setViewContext(context) { demo = context.demo; }
@@ -36,6 +37,7 @@ export function shell() {
       <p class="nav-label">비즈매칭</p>
       <a href="#apply" data-route="apply">${icon('plus')}<span>상담 신청</span>${icon('chevron')}</a>
       <a href="#lookup" data-route="lookup">${icon('search')}<span>신청 현황 확인</span></a>
+      <a href="#brochures" data-route="brochures">${icon('file')}<span>NPU 기업 소개자료</span></a>
       <p class="nav-label management-label">파트너 & 운영</p>
       <a href="#npu" data-route="npu">${icon('building')}<span>NPU 승인 관리</span></a>
       <a href="#matching" data-route="matching" hidden>${icon('clock')}<span>매칭 현황</span></a>
@@ -59,7 +61,7 @@ export function applyPage(providers = PROVIDERS.filter(p => p.active !== false))
     <div class="hero-content"><span class="eyebrow"><span></span> CONNECT TO THE NEXT</span><h1>새로운 협력의 시작,<br><em>K-NPU 비즈매칭</em></h1><p>우리 기업에 맞는 NPU 파트너를 만나보세요.<br>1:1 기술 상담으로 AI 전환의 다음 단계를 함께합니다.</p><div class="hero-tags"><span>${icon('users')} 4개 NPU 파트너</span><span>${icon('clock')} 1:1 맞춤 상담</span></div></div>
     <div class="connect-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="art-line line-one"></div><div class="art-line line-two"></div><div class="art-node node-its">ITS<small>INTELLIGENT TRANSPORT</small></div><div class="art-node node-npu">NPU<small>AI ACCELERATOR</small></div><div class="art-link">↗</div><span class="art-dot dot-one"></span><span class="art-dot dot-two"></span><span class="art-caption">BETTER TOGETHER, NEXT POSSIBILITIES</span></div>
   </section>
-  <div class="notice">${icon('info')}<p>${demo ? '<strong>프로토타입 안내</strong> 이 브라우저에만 저장되는 로컬 데모입니다. 예시 정보로 테스트해 주세요.' : '<strong>상담 신청 안내</strong> 신청 정보는 ITS Korea의 비즈매칭 운영을 위해 저장됩니다.'} 상담은 16:50부터 17:30까지 10분 단위로 진행됩니다.</p></div>
+  <div class="notice">${icon('info')}<p>${demo ? '<strong>프로토타입 안내</strong> 이 브라우저에만 저장되는 로컬 데모입니다. 예시 정보로 테스트해 주세요.' : '<strong>상담 신청 안내</strong> 신청 정보는 ITS Korea의 비즈매칭 운영을 위해 저장됩니다.'} 상담은 15:50부터 16:30까지 10분 단위로 진행됩니다.</p></div>
   <div class="section-heading"><div><span class="eyebrow gray">BUSINESS MEETING</span><h2>1:1 상담 신청</h2><p>기업 정보와 희망하는 상담을 입력해 주세요.</p></div><span class="required-note"><b>*</b> 필수 입력 항목</span></div>
   <div class="application-layout">
   <form id="application-form" class="form-card">
@@ -71,12 +73,13 @@ export function applyPage(providers = PROVIDERS.filter(p => p.active !== false))
     <label class="field full">이메일 <b>*</b><input name="email" type="email" autocomplete="email" maxlength="120" placeholder="name@company.com" required><small>상담 관련 연락과 신청 확인에 사용하는 이메일입니다. 자동 확인 메일은 발송되지 않습니다.</small></label></div></section>
     <section class="form-section"><div class="form-section-title"><span class="section-icon">${icon('users')}</span><h3>상담 파트너 및 시간</h3></div>
     <fieldset class="provider-fieldset"><legend>상담 희망 NPU 기업 <b>*</b></legend><div class="provider-grid">${providerOptions(providers)}</div></fieldset>
-    <fieldset class="time-fieldset"><legend>상담 희망 시간 <b>*</b><span class="legend-extra">10분 단위 · 16:50–17:30</span></legend><div id="time-options" class="time-grid"><p>시간을 불러오는 중입니다.</p></div><p class="field-hint">${icon('info')} 승인대기 신청은 정원에 포함되지 않으며, NPU 기업의 승인 시 확정됩니다.</p></fieldset>
+    <fieldset class="time-fieldset"><legend>상담 희망 시간 <b>*</b><span class="legend-extra">10분 단위 · 15:50–16:30</span></legend><div id="time-options" class="time-grid"><p>시간을 불러오는 중입니다.</p></div><p class="field-hint">${icon('info')} 승인대기 신청은 정원에 포함되지 않으며, NPU 기업의 승인 시 확정됩니다.</p></fieldset>
     <label class="field attendees-field">참석인원 <b>*</b><span class="number-input"><input name="attendees" type="number" min="1" max="20" step="1" value="1" required><span>명</span></span></label></section>
     <section class="form-section"><div class="form-section-title"><span class="section-icon">${icon('file')}</span><h3>상담 내용</h3></div><label class="field">상담하고 싶은 내용을 알려주세요 <b>*</b><textarea name="details" rows="5" maxlength="1000" placeholder="도입을 검토 중인 서비스, 기술 과제, 협력하고 싶은 분야 등을 자유롭게 작성해 주세요." required></textarea></label><div class="textarea-footer"><span>구체적으로 작성하면 더욱 알찬 상담을 준비할 수 있습니다.</span><span id="character-count">0 / 1,000</span></div></section>
     <div class="form-submit"><label class="consent"><input name="consent" type="checkbox" required><span>${demo ? '입력한 데모 정보가 이 브라우저에 저장됨을 확인했습니다.' : '입력한 신청 정보와 저장 방식 안내를 확인했습니다.'} <b>*</b></span></label>${privacyConsent()}<p class="inline-error" id="application-error" role="alert" hidden></p><button type="submit" class="button primary submit-button">상담 신청하기 ${icon('arrow')}</button><p class="submit-note">${icon('shield')} 신청 후 NPU 기업의 승인을 거쳐 매칭이 확정됩니다.</p></div>
   </form>
   <aside class="application-aside"><section class="panel summary-panel"><span class="eyebrow gray">YOUR MEETING</span><h3>신청 요약</h3><div id="selection-summary"></div><div class="summary-status"><span class="live-dot"></span> 신청 시 <strong>승인대기</strong>로 접수됩니다.</div></section>
+  <section class="panel brochure-tip"><h3>NPU 기업 소개자료</h3><p>상담 전에 파트너의 기술과 기업 소개자료를 확인하세요.</p><a href="#brochures" class="text-button">소개자료 보기 ${icon('arrow')}</a></section>
   <section class="panel process-panel"><h3>비즈매칭 진행 안내</h3><ol class="timeline"><li><span>1</span><div><strong>상담 신청</strong><p>희망 기업과 시간을 선택해<br>상담을 신청합니다.</p></div></li><li><span>2</span><div><strong>NPU 기업 검토</strong><p>파트너 기업이 상담 내용을<br>확인하고 승인합니다.</p></div></li><li><span>3</span><div><strong>1:1 비즈매칭 확정</strong><p>신청 확인에서 결과를 확인하고<br>파트너를 만나보세요.</p></div></li></ol></section>
   <div class="aside-tip">${icon('info')}<p>신청 완료 후 발급되는 <strong>신청ID</strong>를 보관해 주세요. 신청ID와 신청 이메일로 신청 상태를 확인할 수 있습니다.</p></div></aside></div>`;
 }
@@ -98,7 +101,7 @@ export function pageHeading(eyebrow, title, text, action = '') {
 export const empty = (title, text) => `<div class="empty-state">${icon('search')}<h3>${title}</h3><p>${text}</p></div>`;
 
 export function lookupPage() {
-  return pageHeading('MY MEETING', '신청 현황 확인', '신청ID와 신청 이메일을 입력하면 상담 신청 현황을 확인할 수 있습니다.') + `<div class="lookup-layout">
+  return pageHeading('MY MEETING', '신청 현황 확인', '신청ID와 신청 이메일을 입력하면 상담 신청 현황을 확인할 수 있습니다.') + lookupTabs('lookup') + `<div class="lookup-layout">
     <section class="panel lookup-form-panel"><div class="section-icon large">${icon('search')}</div><h2>신청 내역 조회</h2><p>신청 완료 화면에서 발급받은 신청ID와 신청 시 입력한 이메일을 입력해 주세요.</p>
       <form id="lookup-form">
         <label class="field">신청ID <b>*</b><input name="id" placeholder="KN-…" autocomplete="off" spellcheck="false" maxlength="80" required></label>
@@ -113,7 +116,7 @@ export function lookupPage() {
 
 export function requestDetail(row, { cancel = false } = {}) {
   const p = { ...providerById(row.providerId), ...(row.providerName ? { name: row.providerName } : {}) };
-  return `<div class="detail-header"><span class="eyebrow gray">MEETING REQUEST</span>${badge(row.status)}</div><h2 class="detail-company">${e(row.itsCompany)}</h2><p class="muted detail-id">${e(row.id)}</p><div class="detail-partner">${mark(p)}<div><small>상담 파트너</small><strong>${e(p.name)}</strong></div><div class="detail-time">${icon('clock')} ${e(row.time)}</div></div><dl class="detail-grid"><div><dt>담당자</dt><dd>${e(row.contactName)}</dd></div><div><dt>참석인원</dt><dd>${e(row.attendees)}명</dd></div><div><dt>이메일</dt><dd>${e(row.email)}</dd></div><div><dt>연락처</dt><dd>${e(row.phone)}</dd></div><div><dt>신청일시</dt><dd>${dateText(row.createdAt)}</dd></div></dl><div class="detail-description"><h3>상담내용</h3><p>${e(row.details)}</p></div>${cancel && [STATUS.PENDING, STATUS.CONFIRMED].includes(row.status) ? '<div class="detail-actions"><p>일정이 변경되었나요? 신청을 취소할 수 있습니다.</p><button class="button danger-outline" id="cancel-request">신청 취소</button></div>' : ''}`;
+  return `<div class="detail-header"><span class="eyebrow gray">MEETING REQUEST</span>${badge(row.status)}</div><h2 class="detail-company">${e(row.itsCompany)}</h2><p class="muted detail-id">${e(row.id)}</p><div class="detail-partner">${mark(p)}<div><small>상담 파트너</small><strong>${e(p.name)}</strong></div><div class="detail-time">${icon('clock')} ${e(row.time)}</div></div><dl class="detail-grid"><div><dt>담당자</dt><dd>${e(row.contactName)}</dd></div><div><dt>참석인원</dt><dd>${e(row.attendees)}명</dd></div><div><dt>이메일</dt><dd>${e(row.email)}</dd></div><div><dt>연락처</dt><dd>${e(row.phone)}</dd></div><div><dt>신청일시</dt><dd>${dateText(row.createdAt)}</dd></div></dl><div class="detail-description"><h3>상담내용</h3><p>${e(row.details)}</p></div>${row.status === STATUS.REJECTED && typeof row.rejectionReason === 'string' && row.rejectionReason.trim() ? '<div class="detail-description rejection-reason"><h3>거절 사유</h3><p>' + e(row.rejectionReason) + '</p></div>' : ''}${cancel && [STATUS.PENDING, STATUS.CONFIRMED].includes(row.status) ? '<div class="detail-actions"><p>일정이 변경되었나요? 신청을 취소할 수 있습니다.</p><button class="button danger-outline" id="cancel-request">신청 취소</button></div>' : ''}`;
 }
 
 export function providerLogin() {
@@ -140,7 +143,7 @@ export function providerMatchingPage(providerId, requests, p = providerById(prov
   const scheduleTimes = [...TIMES, ...previousTimes];
   return pageHeading('MATCHING SCHEDULE', e(p.name) + ' 매칭 현황', '확정된 상담을 시간대별로 확인하세요. 상담을 누르면 상세 내용을 볼 수 있습니다.', '<button id="refresh-matching" class="button secondary">' + icon('reset') + ' 새로고침</button>') + capacitySettings(p, requests) +
     `<section class="panel matching-panel" aria-label="${e(p.name)} 확정 상담 시간표">
-      <div class="panel-heading"><div><h2>비즈매칭 시간표 <span class="count-pill">${confirmed.length}건 확정</span></h2><p>16:50–17:30 · 10분 단위 · 시간대별 정원 적용</p></div><span class="badge confirmed"><i></i> 매칭확정</span></div>
+      <div class="panel-heading"><div><h2>비즈매칭 시간표 <span class="count-pill">${confirmed.length}건 확정</span></h2><p>15:50–16:30 · 10분 단위 · 시간대별 정원 적용</p></div><span class="badge confirmed"><i></i> 매칭확정</span></div>
       <table class="matching-table">
         <caption class="sr-only">${e(p.name)} 시간대별 확정 상담 목록</caption>
         <thead><tr><th scope="col">상담 시간</th><th scope="col">확정 / 정원</th><th scope="col">상담 기업 및 내용</th></tr></thead>
@@ -150,7 +153,7 @@ export function providerMatchingPage(providerId, requests, p = providerById(prov
           const [start, end] = time.split(' – ');
           return `<tr class="matching-row" data-time="${e(time)}">
             <th scope="row" class="matching-time"><strong>${e(start)}</strong><span>– ${e(end)}</span>${!TIMES.includes(time) ? '<small>이전 신청 시간</small>' : ''}</th>
-            <td class="matching-capacity"><strong>${rows.length}<small> / ${capacity}건</small></strong><span>${rows.length >= capacity ? '정원 마감' : '상담 확정'}</span></td>
+            <td class="matching-capacity">${TIMES.includes(time) ? '<strong>' + rows.length + '<small> / ' + capacity + '건</small></strong><span>' + (rows.length >= capacity ? '정원 마감' : '상담 확정') + '</span>' : '<strong>' + rows.length + '건</strong><span>이전 상담 시간</span>'}</td>
             <td class="matching-consultations">${rows.length ? '<div class="matching-meetings">' + rows.map(row =>
               `<button type="button" class="matching-meeting" data-detail="${e(row.id)}" aria-label="${e(row.itsCompany)} · ${e(time)} 상담 상세 보기">
                 <span class="matching-meeting-heading"><strong>${e(row.itsCompany)}</strong><span>${e(row.attendees)}명</span></span>
@@ -182,7 +185,7 @@ export function adminLogin() {
 }
 
 export function adminPage(requests, providers = PROVIDERS, history = []) {
-  const allTimes = [...TIMES, ...new Set(requests.map(row => row.time).filter(time => !TIMES.includes(time)))];
+  const allTimes = [...TIMES, ...new Set([...requests, ...history].map(row => row.time).filter(time => time && !TIMES.includes(time)))];
   return pageHeading('OPERATIONS OVERVIEW', '비즈매칭 운영 대시보드', '남은 상담 자리와 모든 처리 기록을 한눈에 확인하세요.', '<div class="admin-page-actions"><button id="refresh-admin" class="button secondary">' + icon('reset') + ' 새로고침</button><button id="admin-logout" class="text-button">로그아웃</button></div>') +
     stats(requests) + adminProgress(requests, providers) +
     `<section class="panel admin-list history-panel"><div class="panel-heading"><div><h2>전체 활동 로그 <span class="count-pill">${history.length}</span></h2><p>신청·취소·승인·거절·시간별 정원 변경을 하나의 로그로 확인합니다.</p></div></div>
@@ -256,6 +259,7 @@ export function homePage() {
       </div>
     </section>
     <div class="welcome-lookup"><p>이미 상담을 신청하셨나요?</p><a class="welcome-lookup-button" href="#lookup">${icon('search')} 신청 현황 확인 ${icon('arrow')}</a></div>
+    ${brochureCards()}
     <p class="welcome-process"><span>상담 신청</span>${icon('chevron')}<span>NPU 기업 검토</span>${icon('chevron')}<span>1:1 매칭 확정</span></p>
     <div class="welcome-admin"><a href="#admin" class="admin-login-link">${icon('shield')} 관리자로 로그인</a></div>
   </div>`;
@@ -299,3 +303,60 @@ export function adminSlotDetail(provider, time, requests) {
 }
 
 export function providerOptions(providers) { return providers.map((p, i) => `<label class="provider-option"><input type="radio" name="providerId" value="${e(p.id)}" ${i === 0 ? 'checked' : ''} required><span class="provider-tile">${mark(p)}<span class="radio-indicator"></span><strong>${e(p.name)}</strong><small>${e(p.english)}</small><span class="capacity-label">시간별 정원 <b data-capacity-provider="${e(p.id)}">${capacityRange(p)}</b></span></span></label>`).join(''); }
+
+export function lookupTabs(active) {
+  return '<nav class="lookup-tabs" aria-label="신청 조회 방법"><a href="#lookup" ' +
+    (active === 'lookup' ? 'class="active" aria-current="page"' : '') + '>신청 현황 확인</a>' +
+    '<a href="#find-id" ' + (active === 'find-id' ? 'class="active" aria-current="page"' : '') + '>신청 ID 찾기</a></nav>';
+}
+export function findIdsPage() {
+  return pageHeading('FIND MY REQUEST', '신청 ID 찾기', '신청할 때 입력한 네 가지 정보로 신청ID를 찾을 수 있습니다.') +
+    lookupTabs('find-id') + `<div class="lookup-layout">
+    <section class="panel lookup-form-panel"><div class="section-icon large">${icon('search')}</div><h2>신청자 정보 확인</h2>
+      <p>기업명·담당자명·연락처·이메일이 모두 일치하는 신청만 표시합니다.</p>
+      <form id="find-ids-form" autocomplete="off">
+        <label class="field">ITS 기업명 <b>*</b><input name="itsCompany" maxlength="80" required></label>
+        <label class="field">담당자명 <b>*</b><input name="contactName" maxlength="40" required></label>
+        <label class="field">연락처 <b>*</b><input name="phone" type="tel" maxlength="24" required placeholder="010-0000-0000"></label>
+        <label class="field">이메일 <b>*</b><input name="email" type="email" maxlength="120" required placeholder="name@company.com"></label>
+        <p id="find-ids-error" class="inline-error" role="alert" hidden></p>
+        <button class="button primary" type="submit">신청 ID 찾기 ${icon('arrow')}</button>
+      </form>
+    </section>
+    <section id="find-ids-result" aria-live="polite" class="panel lookup-result">
+      ${empty('신청ID를 잊으셨나요?', '신청자 정보를 입력하면 일치하는 신청이 최근 신청 순으로 표시됩니다.')}
+    </section></div>`;
+}
+export function foundRequestIds(rows) {
+  return '<h2 class="found-ids-title">일치하는 신청 <span class="count-pill">' + rows.length + '</span></h2>' +
+    '<div class="found-ids-list">' + rows.map(row => `<article class="found-id-card">
+      <div class="found-id-head"><strong>${e(row.providerName)}</strong>${badge(row.status)}</div>
+      <p>${icon('clock')} ${e(row.time)}</p><small>${dateText(row.createdAt)} 신청</small>
+      <p class="found-request-id">${e(row.id)}</p>
+      <button type="button" class="button secondary small" data-found-id="${e(row.id)}">신청 현황 보기 ${icon('arrow')}</button>
+    </article>`).join('') + '</div>';
+}
+export function rejectionDialog(row) {
+  return `<span class="dialog-symbol">${icon('info')}</span><h2 id="dialog-title">상담 신청을 거절하시겠습니까?</h2>
+    <p class="dialog-description">${e(row.itsCompany)} · ${e(row.time)}<br>입력한 사유는 신청자에게 표시됩니다.</p>
+    <form id="reject-request-form"><label class="field">거절 사유 <b>*</b>
+      <textarea name="rejectionReason" rows="5" maxlength="500" required placeholder="상담 진행이 어려운 사유를 입력해 주세요."></textarea></label>
+      <p class="muted">최대 500자</p><p class="inline-error" id="dialog-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" class="button secondary" data-close-dialog>돌아가기</button>
+      <button type="submit" class="button danger" id="confirm-action">거절하기</button></div></form>`;
+}
+export function brochureCards(items = BROCHURES) {
+  return `<section class="brochure-section" aria-labelledby="brochure-title">
+    <div class="section-heading"><div><span class="eyebrow gray">NPU PARTNERS</span><h2 id="brochure-title">NPU 기업 소개자료</h2>
+      <p>기업별 PDF 소개자료를 새 탭에서 확인하세요.</p></div></div>
+    <div class="brochure-grid">${items.map(item => {
+      const provider = providerById(item.providerId);
+      return `<article class="panel brochure-card">${mark(provider)}<h3>${e(item.name)}</h3><p>기업 및 기술 소개자료 · PDF</p>
+        ${item.available ? '<a class="button secondary small" href="./assets/brochures/' + e(item.file) +
+          '" target="_blank" rel="noopener noreferrer">자료 보기 ' + icon('arrow') + '</a>' :
+          '<button class="button secondary small" type="button" disabled>자료 보기</button><span class="brochure-pending" role="status">자료 준비 중</span>'}</article>`;
+    }).join('')}</div></section>`;
+}
+export function brochuresPage() {
+  return pageHeading('NPU PARTNERS', 'NPU 기업 소개자료', '상담 전에 NPU 파트너의 기업과 기술을 살펴보세요.') + brochureCards();
+}

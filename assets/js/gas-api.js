@@ -90,6 +90,9 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     invalidateConfig,
     getAvailability: providerId => call('getAvailability', { providerId }, 'GET'),
     submitRequest: input => call('submitRequest', input),
+    findRequestIds: input => call('findRequestIds', {
+      itsCompany: input?.itsCompany, contactName: input?.contactName, phone: input?.phone, email: input?.email
+    }),
     findRequest: async input => call('findRequest', identity(input)),
     cancelRequest: async input => call('cancelRequest', identity(input)),
     authenticateProvider: input => call('authenticateProvider', input),

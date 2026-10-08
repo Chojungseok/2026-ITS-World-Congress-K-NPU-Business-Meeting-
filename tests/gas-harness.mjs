@@ -8,10 +8,12 @@ export function createHarness({ sources = {} } = {}) {
   let locked = false, clock = Date.now(), nextSheet = 1, created = 0, failBatch = false, beforeBatch = null;
   const counters = { locks: 0, batches: 0, batchGets: 0, rangeReads: 0, headerReads: 0, lastRows: 0, opens: 0 };
   class Sheet {
-    constructor(name) { this.name = name; this.id = nextSheet++; this.data = []; this.maxRows = 1000; }
+    constructor(name) { this.name = name; this.id = nextSheet++; this.data = []; this.maxRows = 1000; this.maxColumns = 26; }
     getName() { return this.name; }
     getSheetId() { return this.id; }
     getMaxRows() { return this.maxRows; }
+    getMaxColumns() { return this.maxColumns; }
+    getLastColumn() { return Math.max(0, ...this.data.map(row => row.length)); }
     getLastRow() { counters.lastRows++; return this.data.length; }
     setFrozenRows() {}
     getRange(row, col, height, width) {
@@ -79,9 +81,9 @@ export function createHarness({ sources = {} } = {}) {
       counters.batches++;
       if(beforeBatch) { const hook=beforeBatch; beforeBatch=null; hook(); }
       if(failBatch) { failBatch=false; throw Error('Atomic batch failed: sensitive details'); }
-      const book=books.get(id), staged=new Map(book.sheets.map(s=>[s.id,{data:structuredClone(s.data),maxRows:s.maxRows}]));
+      const book=books.get(id), staged=new Map(book.sheets.map(s=>[s.id,{data:structuredClone(s.data),maxRows:s.maxRows,maxColumns:s.maxColumns}]));
       for(const req of body.requests) {
-        if(req.appendDimension) { staged.get(req.appendDimension.sheetId).maxRows+=req.appendDimension.length; continue; }
+        if(req.appendDimension) { const target=staged.get(req.appendDimension.sheetId); const key=req.appendDimension.dimension==='COLUMNS'?'maxColumns':'maxRows'; target[key]+=req.appendDimension.length; continue; }
         const u=req.updateCells, target=staged.get(u.start.sheetId);
         if(!target || u.rows.length!==1 || u.fields!=='userEnteredValue') throw Error('Unexpected batch shape');
         const line=u.rows[0].values.map(cell=>{
@@ -89,13 +91,14 @@ export function createHarness({ sources = {} } = {}) {
           if('formulaValue' in value) throw Error('Formula injection!');
           return value.stringValue ?? value.numberValue ?? value.boolValue ?? '';
         });
-        target.data[u.start.rowIndex]=line;
+        target.data[u.start.rowIndex] ||= [];
+        line.forEach((value,index) => { target.data[u.start.rowIndex][u.start.columnIndex+index]=value; });
       }
       for(const sheet of book.sheets) Object.assign(sheet,staged.get(sheet.id));
     } } },
     ContentService: { MimeType: { JSON:'application/json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) }
   });
-  for(const name of ['Config','Revision','Database','Setup','Auth','Services','Code'])
+  for(const name of ['Config','Revision','Database','Setup','Migration','Auth','Services','Code'])
     vm.runInContext(sources[name] ?? fs.readFileSync(new URL('../apps-script/'+name+'.gs',import.meta.url),'utf8'),context,{filename:name+'.gs'});
   const call = (action,input={},method='POST') => JSON.parse(JSON.stringify(context.handle_(method,{...input,action})));
   const value = result => { if(!result.ok) throw Object.assign(Error(result.error.message), {code:result.error.code}); return result.data; };

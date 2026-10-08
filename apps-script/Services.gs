@@ -1,6 +1,7 @@
 function availability_(db, providerId) {
   var provider = provider_(db, providerId, true), requests = rows_(db, 'requests');
-  return rows_(db, 'capacities').filter(function(s) { return s.providerId === provider.id; }).map(function(s) {
+  return rows_(db, 'capacities').filter(function(s) { return s.providerId === provider.id && KN.times.includes(s.time); })
+    .sort(function(a, b) { return KN.times.indexOf(a.time) - KN.times.indexOf(b.time); }).map(function(s) {
     return { time: s.time, confirmed: confirmed_(requests, provider.id, s.time),
       capacity: integer_(s.capacity, 0, 50), active: active_(s.active) };
   });
@@ -16,6 +17,7 @@ function submit_(db, input) {
   var privacy = privacy_();
   if (input.privacyNoticeVersion !== privacy.version)
     fail_('NOTICE_CHANGED', '개인정보 안내가 변경되었습니다. 페이지를 새로고침하고 다시 확인해 주세요.');
+  if (!KN.times.includes(input.time)) fail_('VALIDATION', '운영 중인 상담 시간을 선택해 주세요.');
   var provider = provider_(db, input.providerId, true), slot = slot_(db, provider.id, input.time);
   var requests = rows_(db, 'requests');
   if (requests.some(function(r) {
@@ -29,7 +31,7 @@ function submit_(db, input) {
     id: 'KN-' + Utilities.getUuid().toUpperCase(), createdAt: now, itsCompany: company, contactName: contact,
     phone: phone, email: email, providerId: provider.id, providerName: provider.name, time: slot.time,
     attendees: attendees, details: details, status: KN.status.pending, privacyConsent: true,
-    privacyConsentedAt: now, privacyNoticeVersion: privacy.version, updatedAt: now
+    privacyConsentedAt: now, privacyNoticeVersion: privacy.version, updatedAt: now, rejectionReason: ''
   };
   commit_(db, 'requests', row, event_('신청', 'applicant', company, row, '', row.status));
   return publicRow_(row);
@@ -49,18 +51,20 @@ function decide_(db, session, input) {
   var row = requests.find(function(r) { return r.id === input.id && r.providerId === session.providerId; });
   if (!row) fail_('NOT_FOUND', '처리할 신청을 찾을 수 없습니다.');
   if (![KN.status.confirmed, KN.status.rejected].includes(input.decision)) fail_('VALIDATION', '승인 또는 거절을 선택해 주세요.');
+  var rejectionReason = input.decision === KN.status.rejected ? text_(input.rejectionReason, 500, '거절 사유') : '';
   if (row.status === input.decision) return publicRow_(row);
   if (row.status !== KN.status.pending) fail_('INVALID_STATE', '승인대기 신청만 처리할 수 있습니다.');
   var slot = slot_(db, session.providerId, row.time);
-  if (input.decision === KN.status.confirmed && (!active_(slot.active) || confirmed_(requests, session.providerId, row.time) >= slot.capacity))
+  if (input.decision === KN.status.confirmed && (!KN.times.includes(row.time) || !active_(slot.active) || confirmed_(requests, session.providerId, row.time) >= slot.capacity))
     fail_('CAPACITY_FULL', '이 시간의 정원이 마감되었거나 운영이 중단되었습니다.');
   var previous = row.status;
-  row.status = input.decision; row.updatedAt = iso_();
+  row.status = input.decision; row.rejectionReason = rejectionReason; row.updatedAt = iso_();
   commit_(db, 'requests', row, event_(input.decision === KN.status.confirmed ? '승인' : '거절', 'provider', provider.name, row, previous, row.status));
   return publicRow_(row);
 }
 function capacity_(db, session, input) {
   var provider = provider_(db, session.providerId, true);
+  if (!KN.times.includes(input.time)) fail_('VALIDATION', '운영 중인 상담 시간을 선택해 주세요.');
   var capacity = integer_(input.capacity, 0, 50), slot = slot_(db, provider.id, input.time);
   if (capacity < confirmed_(rows_(db, 'requests'), provider.id, slot.time))
     fail_('CAPACITY_TOO_SMALL', '이미 확정된 상담 건수보다 정원을 줄일 수 없습니다.');

@@ -2,7 +2,7 @@
 
 강릉 K-NPU 전환 밋업의 ITS 기업 ↔ NPU 기업 1:1 비즈매칭 시스템입니다. 기존 HTML/CSS/JavaScript 화면을 유지하고, 로컬 mock과 Google Apps Script + 비공개 Google Sheets 운영 백엔드를 선택할 수 있게 구성했습니다.
 
-현재 운영 연결용 Web App URL이 설정되어 있습니다. **이번 변경 감지 코드를 운영에 적용하려면 기존 Apps Script 배포를 새 버전으로 갱신하고 프론트엔드를 GitHub에 반영해야 합니다.** 기존 DB·URL·인증정보를 유지하며 DB를 다시 만들 필요는 없습니다. [변경 감지 및 적용 보고서](docs/lightweight-change-detection.md)를 참고하세요.
+현재 운영 연결용 Web App URL을 유지했습니다. **이번 V2 기능은 로컬에 구현했으며, 운영 DB 마이그레이션과 기존 Web App의 새 버전 배포가 먼저 필요합니다.** 운영자는 Google 적용을 완료했다고 알렸습니다. GitHub에 올리는 코드에는 브로슈어 4개도 포함합니다. 이 작업에서는 Google 운영 DB를 직접 변경하지 않았습니다. [V2 변경 파일·적용 순서·검증 보고서](docs/business-meeting-v2.md)를 먼저 읽으세요.
 
 새 환경을 처음 만드는 경우에만 [Google 설정 안내](apps-script/README.md)에 따라 권한을 승인하고 setupSystem()을 실행합니다. 저장소의 코드만으로 Google 리소스가 생성되지는 않습니다.
 
@@ -29,6 +29,8 @@ assets/js/runtime-config.js 한 곳에서 공개 GAS URL과 backend를 관리합
 
 운영 URL이 비어 있으면 운영 설정 오류를 표시합니다. 운영 모드에서 데모 DB로 자동 대체하지 않습니다. 로컬 데모 데이터와 운영 DB는 서로 복사하거나 혼합하지 않습니다.
 
+PDF를 Public Repository에 추가하면 GitHub/Pages에서 공개 파일이 됩니다. 공개 승인을 받은 PDF만 assets/brochures에 원본 그대로 복사하고 assets/js/brochures.js의 해당 available을 true로 바꾸세요. 제공된 원본 PDF 4개는 파일명만 정리하여 배치했고 자료 보기 링크를 활성화했습니다.
+
 실제 개인정보는 Google 설정과 개인정보 안내 확정 전 로컬 테스트에 사용하지 마세요. 자동 확인 메일은 발송하지 않습니다.
 
 ## 기존 화면
@@ -37,12 +39,14 @@ assets/js/runtime-config.js 한 곳에서 공개 GAS URL과 backend를 관리합
 | --- | --- |
 | #home | 소개, ITS/NPU 선택, 신청 현황 확인, 관리자 로그인 |
 | #apply | 상담 신청, 시간별 잔여 자리, 개인정보 동의 |
-| #lookup | 신청ID + 이메일 조회, 승인대기/매칭확정 취소 |
+| #lookup | 신청ID + 이메일 조회, 거절 사유, 승인대기/매칭확정 취소 |
+| #find-id | 기업명·담당자명·연락처·이메일 일치 시 신청ID 찾기 |
+| #brochures | 공개 승인 후 배치한 NPU PDF 소개자료를 새 탭에서 보기 |
 | #npu | 기업 코드 로그인, 본인 기업 신청 승인/거절, 시간별 정원 |
 | #matching | 로그인한 NPU의 확정 시간표·상세 |
 | #admin | 관리자 인증, 5종 통계, 진행 현황 표/팝업, 복합 필터, 전체 활동 로그 |
 
-시간은 16:50–17:30의 10분 단위 4개 구간입니다. 초기 동시 상담 건수는 딥엑스 5, 모빌린트 2, 퓨리오사 1, 리벨리온 2이며 각 시간대별 0~50으로 변경할 수 있습니다. 이미 확정한 건수 아래로 줄일 수 없습니다.
+시간은 15:50–16:30의 10분 단위 4개 구간입니다. 초기 동시 상담 건수는 딥엑스 5, 모빌린트 2, 퓨리오사 1, 리벨리온 2이며 각 시간대별 0~50으로 변경할 수 있습니다. 이미 확정한 건수 아래로 줄일 수 없습니다.
 
 운영에서는 NPU/matching이 5초, 관리자가 10초마다 가벼운 변경 버전만 확인하고 달라졌을 때만 목록을 읽습니다. ITS 신청/조회 화면은 기존 30초 갱신을 유지합니다. 첫 화면과 조회 전/로그인 전 화면은 주기 조회를 하지 않습니다. 편집 중인 정원/필터는 보호하며 수동 새로고침도 제공합니다. 최종 승인 가능 여부는 항상 서버가 다시 검증합니다.
 
@@ -67,8 +71,10 @@ assets/js/runtime-config.js 한 곳에서 공개 GAS URL과 backend를 관리합
 index.html
 start-local.cmd
 assets/
+  brochures/               # 공개 승인된 원본 PDF, 현재 파일 없음
   css/styles.css
   js/bootstrap.js
+  js/brochures.js          # 정적 PDF 경로와 게시 여부
   js/config.js             # 화면 기본값 + 서버 공개 설정 반영
   js/runtime-config.js     # backend, GAS URL, 갱신 주기
   js/api.js                # 유일한 데이터 계층 진입점
@@ -81,7 +87,8 @@ apps-script/
   Code.gs                  # 공개/인증 API 라우팅
   Revision.gs              # Script Properties 변경 버전, Sheet I/O 없는 조회
   Config.gs                # 스키마·기본값·검증·잠금
-  Setup.gs                 # setupSystem
+  Migration.gs             # 기존 DB 안전한 V2 마이그레이션
+  Setup.gs                 # 신규 환경 setupSystem
   Auth.gs                  # 코드/비밀번호 해시, 서명 세션
   Database.gs              # Sheets 읽기 및 원자적 텍스트 쓰기
   Services.gs              # 신청·처리·정원 규칙
@@ -99,6 +106,7 @@ tests/measure-performance.mjs
 tests/revision.test.mjs
 tests/browser-revision.mjs
 tests/measure-revision.mjs
+docs/business-meeting-v2.md
 docs/lightweight-change-detection.md
 docs/google-apps-script-integration.md
 docs/performance-optimization.md
@@ -106,7 +114,7 @@ docs/performance-optimization.md
 
 ## 설정과 배포
 
-이미 운영 중인 경우 [기존 배포 갱신 절차](apps-script/README.md#기존-운영-환경에-이번-성능-개선-적용)에 따릅니다. 아래는 신규 환경 설정 순서입니다.
+이미 운영 중인 경우 [V2 운영 적용 순서](docs/business-meeting-v2.md#운영-적용-순서)에 따릅니다. 기존 DB에 setupSystem/configureAuthentication을 다시 실행하지 않습니다. 아래는 신규 환경 설정 순서입니다.
 
 1. [Google 설정 안내](apps-script/README.md)에 따라 Apps Script 파일/매니페스트를 복사합니다.
 2. setupSystem 실행·Google 권한 승인 → 생성된 DB 공유가 제한됨인지 확인합니다.
@@ -117,7 +125,7 @@ docs/performance-optimization.md
 7. 확인된 코드와 공개 URL을 GitHub에 푸시하고 Pages의 main / root 배포를 사용합니다.
 8. 실제 Pages 주소에서 모바일 신청 → PC 관리자/NPU 승인 → 모바일 조회를 확인합니다.
 
-이번 변경 감지 작업에서는 Google 배포와 GitHub 푸시를 실행하지 않았습니다. 기존 GAS 배포를 먼저 새 버전으로 갱신한 다음 프론트엔드를 반영하세요. 기존 Pages가 켜져 있다면 main 푸시로 자동 배포될 수 있습니다.
+이번 V2 작업에서는 Google DB 변경·배포와 GitHub 푸시를 실행하지 않았습니다. 기존 GAS 배포를 먼저 새 버전으로 갱신한 다음 프론트엔드를 반영하세요. 기존 Pages가 켜져 있다면 main 푸시로 자동 배포될 수 있습니다.
 
 ## 보안과 테스트 범위
 
@@ -125,6 +133,6 @@ docs/performance-optimization.md
 
 정원 변경/승인/취소/신청은 서버 ScriptLock으로 직렬화하고 상태와 처리이력을 하나의 Sheets batchUpdate로 저장합니다. 문자열 셀은 수식으로 해석되지 않게 기록합니다.
 
-기존 55개를 포함한 65개 Node 테스트와 Playwright의 분리된 모바일/PC 브라우저 흐름, 화면별 호출 수·비동기 로딩·갱신 경합, revision 무변경/변경·팝업·탭 복귀 검사를 확인했습니다. 브라우저 검사는 모형 Google 서비스를 사용하며 실제 Google CORS/권한/할당량/실기기 동시성 시험을 대신하지 않습니다.
+기존 65개를 포함한 85개 Node 테스트와 Playwright의 분리된 모바일/PC 브라우저 흐름, 화면별 호출 수·비동기 로딩·갱신 경합, revision 무변경/변경·팝업·탭 복귀 검사를 확인했습니다. 브라우저 검사는 모형 Google 서비스를 사용하며 실제 Google CORS/권한/할당량/실기기 동시성 시험을 대신하지 않습니다.
 
 [변경 감지·배포·실기기 검증](docs/lightweight-change-detection.md), [이전 성능 개선](docs/performance-optimization.md), [API 계약·구현 설계](docs/google-apps-script-integration.md)와 [실제 Google 설정·운영 전 점검](apps-script/README.md)을 참고하세요.

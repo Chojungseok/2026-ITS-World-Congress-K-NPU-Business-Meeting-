@@ -128,7 +128,7 @@ try{
  // A direct log detail must show an externally rejected request without closing.
  const direct=good('submitRequest',h.form({itsCompany:'실시간 모바일 상세 기업',email:'direct-popup@example.com'}));
  await tick(admin,10100,'getAdminRevision');await admin.page.locator('#history-results [data-detail="'+direct.id+'"]').first().click();
- good('decideRequest',{token:h.provider('deepx'),id:direct.id,decision:'매칭거절'});
+ good('decideRequest',{token:h.provider('deepx'),id:direct.id,decision:'매칭거절',rejectionReason:'기존 회귀 검사용 사유'});
  await tick(admin,10100,'getAdminRevision');
  assert.equal(await admin.page.locator('#result-dialog .badge.rejected').count(),1);
  calls(admin,'direct-detail-status-sync',['getAdminRevision','getAdminOverview','getAdminRevision','getAdminOverview']);

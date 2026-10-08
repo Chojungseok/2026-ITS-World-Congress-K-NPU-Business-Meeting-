@@ -1,5 +1,7 @@
 # 기존 API 계약을 유지한 GAS 전환
 
+현재 V2 변경·운영 DB 적용은 [V2 보고서](business-meeting-v2.md)를 먼저 참고하세요.
+
 ## 분석 결과와 유지한 설계
 
 전환 전 api.js는 mock-api.js의 api를 그대로 export했습니다. app.js는 api만 호출하고 views.js가 기존 반응형 화면을 출력했습니다. mock-api.js는 localStorage의 requests/history/slotCapacities를 원본으로 쓰고 메모리 토큰으로 데모 인증을 처리했습니다.
@@ -26,6 +28,7 @@
 | getConfig | 없음 | {providers,times,privacy} | 공개 GET |
 | getAvailability | providerId 문자열 | [{time,confirmed,capacity,active}] | 공개 GET |
 | submitRequest | 신청 필드 객체 + privacyConsent + privacyNoticeVersion | 신청 객체 | 공개 POST |
+| findRequestIds | {itsCompany,contactName,phone,email} | [{id,createdAt,providerName,time,status}] | 네 항목 본인 확인 POST, 15분 10회 제한 |
 | findRequest | {id,email} | 해당 신청 객체 | 본인정보 확인 POST |
 | cancelRequest | {id,email} | 취소된 신청 객체 | 본인정보 확인 POST |
 | authenticateProvider | {providerId,approvalCode} | token 문자열 | 기업 인증 POST |
@@ -36,18 +39,18 @@
 | getProviderRevision | {token} | {revision} | NPU POST, Sheet I/O 없음 |
 | getAdminRevision | {token} | {revision} | 관리자 POST, Sheet I/O 없음 |
 | getAvailabilityRevision | providerId 문자열 | {revision} | 공개 GET, Sheet I/O 없음 |
-| decideRequest | {token,id,decision} | 변경된 신청 객체 | NPU POST |
+| decideRequest | {token,id,decision,rejectionReason?} | 변경된 신청 객체 | NPU POST |
 | updateProviderCapacity | {token,time,capacity} | {providerId,time,capacity} | NPU POST |
 | getAdminRequests | token 문자열 | 전체 신청 배열 | 관리자 POST |
 | getAdminOverview | token 문자열 | {requests,history,providers,config,revision} | 관리자 POST |
 
-decision은 매칭확정 또는 매칭거절입니다. status는 승인대기/매칭확정/매칭거절/신청취소입니다. resetDemo는 운영 구현과 서버에 없습니다.
+decision은 매칭확정 또는 매칭거절입니다. 거절에는 trim 후 1~500자의 rejectionReason이 필수이며, 승인은 해당 값을 무시하고 빈 문자열을 저장합니다. 기존 거절 사유가 없으면 정상적인 빈 값으로 취급합니다. status는 승인대기/매칭확정/매칭거절/신청취소입니다. resetDemo는 운영 구현과 서버에 없습니다.
 
 HTTP 본문은 메서드 인자와 action을 같은 객체에 둡니다. 예: `{action:'getProviderRequests',token:...}`. getConfig/getAvailability/getAvailabilityRevision 외 GET 호출은 거부합니다. 서버에는 client가 지정한 함수명을 실행하는 경로가 없습니다.
 
 성능 개선 서버는 getProviderRequests의 POST 본문에 선택적으로 `includeConfig:true`가 있으면 `{requests,config,revision}`을 반환합니다. 없으면 기존 배열을 반환합니다. gas-api.js는 이 응답을 배열로 풀어서 UI 계약을 유지하고 공개 config만 메모리에 보관합니다. 기존 배포가 배열을 반환하는 경우도 지원합니다. getProviderSnapshot은 같은 서버 동작의 revision을 함께 반환하는 선택적 어댑터 메서드입니다. getProviderRequests의 기존 배열 계약은 유지합니다. getAdminOverview에는 config/revision을 추가했으며 기존 필드도 유지합니다. revision 필드가 없는 이전 서버는 30초 전체 갱신으로 호환됩니다.
 
-신청 객체는 기존 id/createdAt/itsCompany/contactName/phone/email/providerId/time/attendees/details/status/privacyConsent/privacyConsentedAt/privacyNoticeVersion을 유지하고 providerName/updatedAt을 추가합니다. 시트 내부 행 번호는 반환하지 않습니다.
+신청 객체는 기존 id/createdAt/itsCompany/contactName/phone/email/providerId/time/attendees/details/status/privacyConsent/privacyConsentedAt/privacyNoticeVersion을 유지하고 providerName/updatedAt/rejectionReason을 추가합니다. 시트 내부 행 번호는 반환하지 않습니다.
 
 기업 설정의 capacities는 시간 → 정원, enabled는 시간 → 운영여부입니다. 활성여부는 active로 전달합니다. 기업 마크/색상 등 화면 장식만 프론트엔드 기본값을 사용합니다. 잔여 자리는 공개된 집계와 정원으로 계산하고 개인정보는 포함하지 않습니다.
 
@@ -72,7 +75,7 @@ history는 기존 action/occurredAt/actor/requestId/itsCompany/providerId/time/f
 
 중복 활성 신청은 정규화한 이메일 + ITS기업 + NPU + 시간으로 검사합니다. 승인대기는 자리를 예약하지 않습니다. 승인 직전에 확정 건수를 다시 읽습니다. 확정 취소 후 다음 집계부터 자리가 반환됩니다.
 
-신청·승인·거절·취소·정원 변경은 공통 ScriptLock 안에서 실제 DB를 새로 읽고 검증합니다. 인증·로그아웃·신청자 본인확인도 세션/시도 제한 갱신을 위해 잠금을 유지합니다. 공개 설정·가용 시간·기업 목록·관리자 단일 목록은 순수 조회이므로 전역 잠금 없이 읽습니다. 관리자 overview는 네 시트의 batchGet 구간만 같은 잠금으로 보호하고 집계·변환은 잠금 해제 후 수행합니다. 수정과 처리이력은 고급 Sheets API batchUpdate 한 번으로 저장합니다. 마지막 자리 두 건 승인, 취소/승인, 정원 축소/승인이 임계 구역 밖에서 서로 경쟁하지 않습니다. 이미 처리된 동일 승인/거절/취소의 재시도는 중복 이력을 만들지 않습니다. 단 신규 신청 응답 유실 후 재시도는 DUPLICATE로 차단되므로 ID를 받지 못했다면 관리자에게 접수 확인을 요청해야 합니다.
+신청·승인·거절·취소·정원 변경은 공통 ScriptLock 안에서 실제 DB를 새로 읽고 검증합니다. 인증·로그아웃·신청자 본인확인도 세션/시도 제한 갱신을 위해 잠금을 유지합니다. 공개 설정·가용 시간·기업 목록·관리자 단일 목록은 순수 조회이므로 전역 잠금 없이 읽습니다. 관리자 overview는 네 시트의 batchGet 구간만 같은 잠금으로 보호하고 집계·변환은 잠금 해제 후 수행합니다. 수정과 처리이력은 고급 Sheets API batchUpdate 한 번으로 저장합니다. 마지막 자리 두 건 승인, 취소/승인, 정원 축소/승인이 임계 구역 밖에서 서로 경쟁하지 않습니다. 이미 처리된 동일 승인/거절/취소의 재시도는 중복 이력을 만들지 않습니다. 단 신규 신청 응답 유실 후 재시도는 DUPLICATE로 차단되므로 ID를 받지 못했다면 네 정보가 일치하는 신청 ID 찾기로 접수를 확인하거나 관리자에게 문의할 수 있습니다.
 
 정원은 기업 × 시간별 0~50 정수입니다. 기존 확정 수 미만으로 줄일 수 없습니다. 정원 0 또는 운영여부 FALSE이면 신규 신청/승인을 받지 않습니다. 취소와 거절은 계속 가능합니다.
 
@@ -92,7 +95,7 @@ NPU/matching은 5초마다 getProviderRevision, 관리자는 10초마다 getAdmi
 
 ## 검증 범위
 
-`npm test`의 65개 검사는 기존 mock 테스트와 실제 .gs 소스를 Node VM에서 실행하는 서버 테스트, 어댑터 전송/세션 테스트를 실행합니다. Google 서비스 모형의 잠금과 batch API가 실제 서버 코드를 검증합니다.
+`npm test`의 85개 검사는 기존 mock 테스트와 실제 .gs 소스를 Node VM에서 실행하는 서버 테스트, 어댑터 전송/세션 테스트를 실행합니다. Google 서비스 모형의 잠금과 batch API가 실제 서버 코드를 검증합니다.
 
 `tests/browser-gas-smoke.mjs`는 선택적 Playwright 검사입니다. 실제 프론트엔드를 분리된 브라우저 컨텍스트에서 실행하고 GAS 요청만 서비스 모형에 연결합니다. npm start로 서버를 실행하고 Playwright가 있는 환경에서 실행합니다. PLAYWRIGHT_MODULE, BROWSER_CHANNEL, PREVIEW_URL 환경변수를 선택적으로 사용할 수 있습니다.
 
@@ -101,3 +104,5 @@ NPU/matching은 5초마다 getProviderRevision, 관리자는 10초마다 getAdmi
 `tests/revision.test.mjs`는 버전 변경 범위·인증·시트 읽기 0·발행 실패·snapshot 경합을 검사합니다. `tests/browser-revision.mjs`는 다른 클라이언트의 변경 자동 반영, 팝업/필터/초안, hidden/visible, 중복 방지, 실패 후 재검사를 확인합니다. `node tests/measure-revision.mjs`로 30분/5회 변경의 합성 서비스 호출 및 payload 크기를 비교합니다.
 
 로컬 테스트는 실제 Google 서버의 배포 권한, CORS, API 할당량을 검증하지 않습니다. [설정·실기기 검증 안내](../apps-script/README.md)를 따라 사용자 계정에서 완료해야 합니다.
+
+V2는 새 15:50~16:30 운영 시간만 공개 config/availability로 반환하고 과거 신청/이력의 시간은 보존합니다. 신청 ID 찾기는 revision을 변경하지 않으며 입력 정보를 지속 저장하지 않습니다. 거절 사유는 Q열에 안전한 stringValue로 기록하고 기존 provider/admin revision 발행을 그대로 사용합니다. PDF는 정적 링크이며 GAS/Sheets를 호출하지 않습니다.

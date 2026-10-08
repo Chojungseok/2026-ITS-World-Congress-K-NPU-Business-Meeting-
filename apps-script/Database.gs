@@ -80,19 +80,21 @@ function writeBatch_(db, changes) {
       rows: [{ values: values }], fields: 'userEnteredValue'
     } });
   });
-  if (requests.length) {
-    var configChanged = changes.some(function(change) { return ['capacities', 'providers'].includes(change.type); });
-    // Versioned keys prevent a slow, pre-change cache fill resurrecting stale config.
-    if (configChanged) invalidatePublicConfig_();
-    var revisionChange = prepareRevision_(changes);
-    try {
-      Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId());
-      publishRevision_(revisionChange); // Only after both data and audit commit, while still locked.
-    }
-    finally { if (configChanged) invalidatePublicConfig_(); }
-    changes.forEach(function(change) { delete db.records[change.type]; });
-  }
+  executeBatch_(db, requests, changes);
 }
+// Shared atomic commit path, also used by the editor-only migration.
+function executeBatch_(db, requests, changes) {
+  if (!requests.length) return;
+  var configChanged = changes.some(function(change) { return ['capacities', 'providers'].includes(change.type); });
+  if (configChanged) invalidatePublicConfig_();
+  var revisionChange = prepareRevision_(changes);
+  try {
+    Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId());
+    publishRevision_(revisionChange);
+  } finally { if (configChanged) invalidatePublicConfig_(); }
+  changes.forEach(function(change) { delete db.records[change.type]; });
+}
+
 function commit_(db, type, value, event) {
   writeBatch_(db, [
     { type: type, row: value._row, value: value },
@@ -121,7 +123,7 @@ function confirmed_(requests, providerId, time) {
   return requests.filter(function(r) { return r.providerId === providerId && r.time === time && r.status === KN.status.confirmed; }).length;
 }
 function config_(db) {
-  var slots = rows_(db, 'capacities');
+  var slots = rows_(db, 'capacities').filter(function(s) { return KN.times.includes(s.time); });
   var providers = rows_(db, 'providers').map(function(p) {
     var capacities = {}, enabled = {};
     slots.filter(function(s) { return s.providerId === p.id; }).forEach(function(s) {
@@ -132,7 +134,7 @@ function config_(db) {
   });
   return {
     providers: providers,
-    times: Array.from(new Set(slots.map(function(s) { return s.time; }))).sort(),
+    times: KN.times.slice(),
     privacy: privacy_()
   };
 }
@@ -172,7 +174,7 @@ function availabilitySnapshot_() {
   var ranges = types.map(function(type) {
     return "'" + KN.schemas[type].name + "'!A:" + String.fromCharCode(64 + KN.schemas[type].keys.length);
   });
-  ranges.push("'상담신청'!A1:P1", "'상담신청'!G2:G", "'상담신청'!I2:I", "'상담신청'!L2:L");
+  ranges.push("'상담신청'!A1:Q1", "'상담신청'!G2:G", "'상담신청'!I2:I", "'상담신청'!L2:L");
   var response = Sheets.Spreadsheets.Values.batchGet(db.getId(), { ranges: ranges, valueRenderOption: 'UNFORMATTED_VALUE' });
   types.forEach(function(type, index) {
     var values = response.valueRanges[index].values || [], keys = KN.schemas[type].keys;

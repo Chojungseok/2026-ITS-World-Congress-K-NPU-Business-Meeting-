@@ -56,7 +56,7 @@ test('successful events bump exactly the relevant provider/admin/availability re
  event('decideRequest',{token,id:a.id,decision:'매칭확정'},{availability:true});
  event('cancelRequest',{id:a.id,email:a.email},{availability:true});
  const b=event('submitRequest',h.form({email:'reject@example.com'}));
- event('decideRequest',{token,id:b.id,decision:'매칭거절'});
+ event('decideRequest',{token,id:b.id,decision:'매칭거절',rejectionReason:'기존 회귀 검사용 사유'});
  const c=event('submitRequest',h.form({email:'cancel@example.com'}));
  event('cancelRequest',{id:c.id,email:c.email});
  event('updateProviderCapacity',{token,time:h.time,capacity:7},{availability:true});
@@ -131,7 +131,7 @@ test('provider full response carries pre-read revision so a concurrent commit ca
  let changed=false;
  h.context.Sheets.Spreadsheets.Values.batchGet=(id,options)=>{
    const response=batch(id,options);
-   if(!changed&&options.ranges.includes("'상담신청'!A:P")){
+   if(!changed&&options.ranges.includes("'상담신청'!A:Q")){
      changed=true;good(h,'submitRequest',h.form());
    }
    return response;

@@ -9,8 +9,11 @@ export const LEGACY_TIMES = Object.freeze([
   '13:00 – 13:30', '13:30 – 14:00', '14:00 – 14:30',
   '14:30 – 15:00', '15:00 – 15:30', '15:30 – 16:00'
 ]);
-export let TIMES = Object.freeze([
+export const PREVIOUS_TIMES = Object.freeze([
   '16:50 – 17:00', '17:00 – 17:10', '17:10 – 17:20', '17:20 – 17:30'
+]);
+export let TIMES = Object.freeze([
+  '15:50 – 16:00', '16:00 – 16:10', '16:10 – 16:20', '16:20 – 16:30'
 ]);
 export const PRIVACY_NOTICE_VERSION = 'local-demo-v1';
 export const STORAGE_KEY = 'knpu-connect-demo-v1';

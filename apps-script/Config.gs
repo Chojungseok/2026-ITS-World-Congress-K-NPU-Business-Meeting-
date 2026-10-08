@@ -7,13 +7,14 @@ var KN = {
     { id: 'furiosa', name: '퓨리오사', english: 'FURIOSA', capacity: 1 },
     { id: 'rebellions', name: '리벨리온', english: 'REBELLIONS', capacity: 2 }
   ],
-  times: ['16:50 – 17:00', '17:00 – 17:10', '17:10 – 17:20', '17:20 – 17:30'],
+  previousTimes: ['16:50 – 17:00', '17:00 – 17:10', '17:10 – 17:20', '17:20 – 17:30'],
+  times: ['15:50 – 16:00', '16:00 – 16:10', '16:10 – 16:20', '16:20 – 16:30'],
   sessionMs: 30 * 60 * 1000,
   publicConfigTtlSeconds: 30,
   schemas: {
     requests: { name: '상담신청',
-      headers: ['신청ID','신청일시','ITS기업명','담당자명','연락처','이메일','NPU기업ID','NPU기업명','상담시간','참석인원','상담내용','상태','개인정보동의','개인정보동의시각','개인정보안내문버전','최종수정일시'],
-      keys: ['id','createdAt','itsCompany','contactName','phone','email','providerId','providerName','time','attendees','details','status','privacyConsent','privacyConsentedAt','privacyNoticeVersion','updatedAt'] },
+      headers: ['신청ID','신청일시','ITS기업명','담당자명','연락처','이메일','NPU기업ID','NPU기업명','상담시간','참석인원','상담내용','상태','개인정보동의','개인정보동의시각','개인정보안내문버전','최종수정일시','거절사유'],
+      keys: ['id','createdAt','itsCompany','contactName','phone','email','providerId','providerName','time','attendees','details','status','privacyConsent','privacyConsentedAt','privacyNoticeVersion','updatedAt','rejectionReason'] },
     capacities: { name: '시간대별정원',
       headers: ['NPU기업ID','NPU기업명','상담시간','최대상담건수','운영여부','최종수정일시','최종수정자'],
       keys: ['providerId','providerName','time','capacity','active','updatedAt','updatedBy'] },
