@@ -11,14 +11,14 @@ const good=(action,input={})=>h.value(h.call(action,input)),errors=[],report={};
 const gate=()=>{let release;const promise=new Promise(r=>release=r);return {promise,release};};
 async function client(hash,width=1440,{legacy=false}={}){
  const ctx=await browser.newContext({viewport:{width,height:1000}}),calls=[],control={hold:null,fail:null};
- await ctx.route('**/assets/js/runtime-config.js',route=>route.fulfill({contentType:'text/javascript',body:
+ await ctx.route('**/assets/js/runtime-config.js*',route=>route.fulfill({contentType:'text/javascript',body:
   'export const RUNTIME_CONFIG={backend:"gas",gasUrl:'+JSON.stringify(url)+',refreshIntervalMs:30000,revisionPolling:{providerMs:5000,adminMs:10000,retryMs:30000}};export function resolveBackend(){return "gas";}'}));
  await ctx.route(url+'**',async route=>{
    const request=route.request(),payload=request.method()==='GET'?Object.fromEntries(new URL(request.url()).searchParams):JSON.parse(request.postData());
    const action=payload.action;calls.push(action);
    let result=await (await h.fetch(request.url(),{method:request.method(),body:request.postData()})).json();
-   if(control.fail===action){control.fail=null;result={ok:false,error:{code:'INTERNAL',message:'일시적인 테스트 연결 오류'}};}
-   if(legacy&&result.data&&['getProviderRequests','getAdminOverview'].includes(action))delete result.data.revision;
+   if(control.fail===action){control.fail=null;result={ok:false,meta:result.meta,error:{code:'INTERNAL',message:'일시적인 테스트 연결 오류'}};}
+   if(legacy&&result.data){if(['getProviderRequests','getAdminOverview'].includes(action))delete result.data.revision;if(result.data.snapshot)delete result.data.snapshot.revision;if(result.data.overview)delete result.data.overview.revision;}
    if(control.hold?.action===action){const hold=control.hold;control.hold=null;hold.seen.release();await hold.reply.promise;}
    await route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
  });

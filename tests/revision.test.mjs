@@ -1,3 +1,4 @@
+import {API_VERSION} from '../assets/js/build-version.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHarness} from './gas-harness.mjs';
@@ -156,7 +157,7 @@ test('adapter keeps array contract, exposes snapshot revision, uses POST for pro
  assert.deepEqual(await api.getAvailabilityRevision('deepx'),{revision:state(h).availability.deepx});
  assert.equal(calls.at(-1).options.method,'GET');
  for(const call of calls.slice(0,-1)){assert.equal(call.options.method,'POST');assert.ok(!call.url.includes(provider));}
- const old=createGasApi({url:'https://script.google.com/macros/s/test/exec',fetchImpl:async()=>new Response(JSON.stringify({ok:true,data:[{id:'legacy'}]}))});
+ const old=createGasApi({url:'https://script.google.com/macros/s/test/exec',fetchImpl:async()=>new Response(JSON.stringify({ok:true,meta:{apiVersion:API_VERSION},data:[{id:'legacy'}]}))});
  assert.deepEqual(await old.getProviderSnapshot(provider),{requests:[{id:'legacy'}]});
 });
 
@@ -170,5 +171,5 @@ test('30-minute synthetic comparison: 360 probes and 5 changes require 5 full re
    if(seen!==revision){revision=good(h,'getProviderRequests',{token,includeConfig:true}).revision;full++;}
  }
  assert.equal(full,6);assert.equal(h.counters.batchGets-before,11); // 6 reads + 5 writes' snapshots.
- assert.ok(Buffer.byteLength(JSON.stringify({ok:true,data:sample}),'utf8')<100);
+ assert.ok(Buffer.byteLength(JSON.stringify({ok:true,meta:{apiVersion:API_VERSION},data:sample}),'utf8')<150);
 });

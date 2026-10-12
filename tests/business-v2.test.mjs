@@ -1,3 +1,4 @@
+import {API_VERSION} from '../assets/js/build-version.js';
 import {test} from 'node:test';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
@@ -192,7 +193,7 @@ test('adapter ID finder and rejection send body-only POST, never query PII or pe
   const results=await api.findRequestIds({...input,token:'unneeded',extra:'not forwarded'});
   assert.equal(results[0].id,row.id);
   const call=sent.at(-1);assert.equal(call.url,'https://script.google.com/macros/s/test/exec');assert.equal(call.options.method,'POST');
-  assert.deepEqual(JSON.parse(call.options.body),{...input,action:'findRequestIds'});
+  assert.deepEqual(JSON.parse(call.options.body),{...input,action:'findRequestIds',apiVersion:API_VERSION});
   const token=h.provider('deepx');
   await api.decideRequest({token,id:row.id,decision:'매칭거절',rejectionReason:'서버 사유'});
   assert.equal(JSON.parse(sent.at(-1).options.body).rejectionReason,'서버 사유');

@@ -1,0 +1,50 @@
+[
+  {
+    "action": "getConfig",
+    "method": "GET",
+    "elapsedMs": 3561,
+    "status": 200,
+    "redirected": true,
+    "finalHost": "script.googleusercontent.com",
+    "contentType": "application/json; charset=utf-8",
+    "corsOrigin": "*",
+    "responseKind": "json",
+    "ok": true,
+    "payloadBytes": 1540,
+    "apiVersion": null
+  },
+  {
+    "action": "getConfig",
+    "method": "GET",
+    "elapsedMs": 3484,
+    "status": 200,
+    "redirected": true,
+    "finalHost": "script.googleusercontent.com",
+    "contentType": "application/json; charset=utf-8",
+    "corsOrigin": "*",
+    "responseKind": "json",
+    "ok": true,
+    "payloadBytes": 1540,
+    "apiVersion": null
+  },
+  {
+    "action": "getAvailability",
+    "method": "GET",
+    "elapsedMs": 1460,
+    "status": 200,
+    "redirected": true,
+    "finalHost": "script.googleusercontent.com",
+    "contentType": "application/json; charset=utf-8",
+    "corsOrigin": "*",
+    "responseKind": "json",
+    "ok": true,
+    "payloadBytes": 360,
+    "apiVersion": null
+  },
+  {
+    "action": "authenticateAdmin",
+    "method": "GET",
+    "elapsedMs": 15008,
+    "result": "unavailable-or-timeout"
+  }
+]

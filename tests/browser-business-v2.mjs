@@ -14,7 +14,7 @@ async function client(hash,width=1440,{released=false,pending=false,mock=false}=
  ctx.on('page',page=>page.on('pageerror',e=>errors.push(e.message)));
  ctx.on('request',r=>{if(/\.pdf(?:$|\?)/.test(r.url()))pdfRequests.push(r.url());});
  if(!mock){
-  await ctx.route('**/assets/js/runtime-config.js',route=>route.fulfill({contentType:'text/javascript',body:
+  await ctx.route('**/assets/js/runtime-config.js*',route=>route.fulfill({contentType:'text/javascript',body:
    'export const RUNTIME_CONFIG={backend:"gas",gasUrl:'+JSON.stringify(url)+',refreshIntervalMs:30000,revisionPolling:{providerMs:5000,adminMs:10000,retryMs:30000}};export function resolveBackend(){return "gas";}'}));
   await ctx.route(url+'**',async route=>{
    const r=route.request(),input=r.method()==='GET'?Object.fromEntries(new URL(r.url()).searchParams):JSON.parse(r.postData());
@@ -25,7 +25,7 @@ async function client(hash,width=1440,{released=false,pending=false,mock=false}=
  }
  if(released || pending){
   const source=await fs.readFile('assets/js/brochures.js','utf8');
-  await ctx.route('**/assets/js/brochures.js',route=>route.fulfill({contentType:'text/javascript',body:pending ? source.replaceAll('available: true','available: false') : source.replaceAll('available: false','available: true')}));
+  await ctx.route('**/assets/js/brochures.js*',route=>route.fulfill({contentType:'text/javascript',body:pending ? source.replaceAll('available: true','available: false') : source.replaceAll('available: false','available: true')}));
   // Only verify navigation; this explicit 404 fixture is not a fabricated brochure.
   await ctx.route('**/assets/brochures/*.pdf',route=>route.fulfill({status:404,contentType:'text/plain',body:'PDF navigation test fixture'}));
  }

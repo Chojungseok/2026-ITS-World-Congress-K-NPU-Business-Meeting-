@@ -115,7 +115,7 @@ test('GAS extension uses simple body-only POST, sanitizes payload, invalidates c
  const calls=[];let lost=false;const h=createHarness(),api=createGasApi({url:'https://script.google.com/macros/s/test/exec',fetchImpl:async(url,opt)=>{calls.push({url,opt});if(lost&&JSON.parse(opt.body||'{}').action==='extendSchedule')throw Error('lost');return h.fetch(url,opt);}});
  await api.getConfig();const token=h.adminToken();await api.extendSchedule({token,expectedLastTime:h.times.at(-1),time:'client-forged'});
  assert.equal(calls.at(-1).opt.method,'POST');assert.equal(calls.at(-1).opt.headers['Content-Type'],'text/plain;charset=utf-8');
- assert.deepEqual(Object.keys(JSON.parse(calls.at(-1).opt.body)).sort(),['action','expectedLastTime','token']);assert.ok(!calls.at(-1).url.includes(token));
+ assert.deepEqual(Object.keys(JSON.parse(calls.at(-1).opt.body)).sort(),['action','apiVersion','expectedLastTime','token']);assert.ok(!calls.at(-1).url.includes(token));
  assert.equal((await api.getConfig()).times.length,5);
  lost=true;const before=calls.length;await assert.rejects(api.extendSchedule({token,expectedLastTime:'16:30 – 16:40'}));assert.equal(calls.length,before+1);
  await api.getConfig();assert.equal(calls.at(-1).opt.method,'GET');

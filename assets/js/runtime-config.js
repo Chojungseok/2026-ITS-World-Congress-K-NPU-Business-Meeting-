@@ -3,9 +3,10 @@ export const RUNTIME_CONFIG = Object.freeze({
   // auto: localhost/127.0.0.1/file uses mock; all other hosts use GAS.
   // Use 'gas' to test the real backend locally. Hosted sites never fall back to mock.
   backend: 'auto',
+  performanceDiagnostics: false, // Development only; timings contain no request data.
   gasUrl: 'https://script.google.com/macros/s/AKfycbytiA-aqCFyragSDjxLrWzxuyLPqN_BCFbDiOv6YHd_AbkE2axhpw4-b95q3fqZNKJ_/exec', // Paste https://script.google.com/macros/s/DEPLOYMENT_ID/exec here.
   refreshIntervalMs: 30000, // Lookup and compatibility fallback only; apply uses availability revision.
-  revisionPolling: Object.freeze({ providerMs: 5000, adminMs: 10000, availabilityMs: 5000, retryMs: 30000 })
+  revisionPolling: Object.freeze({ providerMs: 5000, adminMs: 10000, availabilityMs: 5000, boardMs: 10000, retryMs: 30000 })
 });
 export function resolveBackend(config = RUNTIME_CONFIG, location = globalThis.location) {
   const local = !location || location.protocol === 'file:' ||

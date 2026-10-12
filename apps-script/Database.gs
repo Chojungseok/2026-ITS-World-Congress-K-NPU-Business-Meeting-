@@ -34,9 +34,9 @@ function snapshot_(db, types) {
   var ranges = missing.map(function(type) {
     return "'" + KN.schemas[type].name + "'!A:" + String.fromCharCode(64 + KN.schemas[type].keys.length);
   });
-  var response = Sheets.Spreadsheets.Values.batchGet(db.getId(), {
+  var response = measureStage_('snapshotMs',function(){ return Sheets.Spreadsheets.Values.batchGet(db.getId(), {
     ranges: ranges, valueRenderOption: 'UNFORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING'
-  });
+  }); });
   missing.forEach(function(type, index) {
     var values = response.valueRanges[index].values || [], keys = KN.schemas[type].keys;
     validateHeaders_(db, type, values[0] || []);
@@ -89,7 +89,7 @@ function executeBatch_(db, requests, changes) {
   if (configChanged) invalidatePublicConfig_();
   var revisionChange = prepareRevision_(changes);
   try {
-    Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId());
+    measureStage_('writeMs',function(){return Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId());});
     publishRevision_(revisionChange);
   } finally { if (configChanged) invalidatePublicConfig_(); }
   changes.forEach(function(change) { delete db.records[change.type]; });
@@ -175,7 +175,7 @@ function availabilitySnapshot_() {
     return "'" + KN.schemas[type].name + "'!A:" + String.fromCharCode(64 + KN.schemas[type].keys.length);
   });
   ranges.push("'상담신청'!A1:Q1", "'상담신청'!G2:G", "'상담신청'!I2:I", "'상담신청'!L2:L");
-  var response = Sheets.Spreadsheets.Values.batchGet(db.getId(), { ranges: ranges, valueRenderOption: 'UNFORMATTED_VALUE' });
+  var response = measureStage_('snapshotMs',function(){return Sheets.Spreadsheets.Values.batchGet(db.getId(), { ranges: ranges, valueRenderOption: 'UNFORMATTED_VALUE' }); });
   types.forEach(function(type, index) {
     var values = response.valueRanges[index].values || [], keys = KN.schemas[type].keys;
     validateHeaders_(db, type, values[0] || []);
@@ -189,6 +189,26 @@ function availabilitySnapshot_() {
   var columns = response.valueRanges.slice(3).map(function(range) { return range.values || []; });
   db.records.requests = Array.from({ length: Math.max.apply(null, columns.map(function(c) { return c.length; })) }, function(_, i) {
     return { providerId: (columns[0][i] || [''])[0], time: (columns[1][i] || [''])[0], status: (columns[2][i] || [''])[0] };
+  });
+  return db;
+}
+
+function submissionSnapshot_() {
+  var db=database_(),types=['providers','capacities'];
+  var ranges=types.map(function(type){return "'"+KN.schemas[type].name+"'!A:"+String.fromCharCode(64+KN.schemas[type].keys.length);});
+  var fields=[['C','itsCompany'],['F','email'],['G','providerId'],['I','time'],['L','status']];
+  ranges.push("'상담신청'!A1:Q1");
+  fields.forEach(function(f){ranges.push("'상담신청'!"+f[0]+"2:"+f[0]);});
+  var response=measureStage_('snapshotMs',function(){return Sheets.Spreadsheets.Values.batchGet(db.getId(),{ranges:ranges,valueRenderOption:'UNFORMATTED_VALUE'});});
+  types.forEach(function(type,index){
+    var values=response.valueRanges[index].values || [],keys=KN.schemas[type].keys;
+    validateHeaders_(db,type,values[0] || []);
+    db.records[type]=values.slice(1).map(function(row,i){var record={_row:i+2};keys.forEach(function(key,j){record[key]=row[j] == null ? '' : row[j];});return record;}).filter(function(row){return row[keys[0]] !== '';});
+  });
+  validateHeaders_(db,'requests',(response.valueRanges[2].values || [])[0] || []);
+  var columns=response.valueRanges.slice(3).map(function(r){return r.values || [];});
+  db.records.requests=Array.from({length:Math.max.apply(null,columns.map(function(c){return c.length;}))},function(_,i){
+    var record={_row:i+2};fields.forEach(function(f,j){record[f[1]]=(columns[j][i] || [''])[0];});return record;
   });
   return db;
 }

@@ -33,6 +33,7 @@ function configureAuthentication() {
     var adminId = properties.getProperty('ADMIN_ID');
     if (!adminId || adminId === 'ITSKOREA9911' || adminId.length > 80)
       fail_('SETUP_REQUIRED', '새로운 운영 관리자 ID를 설정해 주세요.');
+    properties.deleteProperty(SESSION_INDEX_);
     properties.setProperties(updates, false);
     remove.forEach(function(key) { properties.deleteProperty(key); });
     Object.keys(properties.getProperties()).forEach(function(key) {
@@ -56,16 +57,51 @@ function throttle_(bucket, success) {
   if (state.count >= 10) fail_('RATE_LIMITED', '인증 시도가 많습니다. 15분 후 다시 시도해 주세요.');
   if (success === false) { state.count++; properties.setProperty(key, JSON.stringify(state)); }
 }
+// Compact derived index: <= 8.6 KB for 200 UUID sessions (Script Property limit 9 KB).
+// SESSION_* remains authoritative for expiry/signature/logout validation.
+var SESSION_INDEX_ = 'KNPU_SESSION_INDEX_V1';
+function sessionEntries_(properties) {
+  var raw=properties.getProperty(SESSION_INDEX_);
+  if(raw !== null && raw.length <= 9000 && /^(?:[a-f0-9]{32}:[a-z0-9]+(?:,[a-f0-9]{32}:[a-z0-9]+)*)?$/.test(raw))
+  {
+    var parsed=raw ? raw.split(',').map(function(s){var pair=s.split(':');return {jti:pair[0].replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/,'$1-$2-$3-$4-$5'),expiresAt:parseInt(pair[1],36)};}) : [];
+    if(parsed.every(function(e,i){return Number.isSafeInteger(e.expiresAt) && e.expiresAt > 0 && parsed.findIndex(function(other){return other.jti === e.jti;}) === i;}))
+      return {indexed:true,entries:parsed};
+  }
+  var all=properties.getProperties(),entries=[];
+  Object.keys(all).forEach(function(key){if(key.indexOf('SESSION_') === 0) entries.push({jti:key.slice(8),expiresAt:Number(all[key])});});
+  return {indexed:entries.every(function(e){return /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(e.jti) && Number.isFinite(e.expiresAt);}),entries:entries};
+}
+function saveSessionIndex_(properties, state) {
+  if (!state.indexed) return;
+  var packed=state.entries.map(function(e){return e.jti.replace(/-/g,'')+':'+e.expiresAt.toString(36);}).join(',');
+  if(packed.length <= 9000) properties.setProperty(SESSION_INDEX_,packed);
+}
+function revokeSession_(jti) {
+  var properties=props_(),state=sessionEntries_(properties);
+  // Invalidate before modifying authoritative rows: a partial Properties failure
+  // forces next login to rebuild from SESSION_* rather than trust an outdated index.
+  properties.deleteProperty(SESSION_INDEX_);
+  properties.deleteProperty('SESSION_'+jti);
+  state.entries=state.entries.filter(function(e){return e.jti !== jti;});
+  saveSessionIndex_(properties,state);
+}
 function issueToken_(role, providerId) {
-  var properties = props_(), all = properties.getProperties(), now = Date.now(), count = 0;
-  Object.keys(all).filter(function(key) { return key.indexOf('SESSION_') === 0; }).forEach(function(key) {
-    if (Number(all[key]) <= now) properties.deleteProperty(key); else count++;
-  });
-  if (count >= 200) fail_('BUSY', '로그인 세션이 많습니다. 잠시 후 다시 시도해 주세요.');
-  var payload = { role: role, providerId: providerId || null, expiresAt: now + KN.sessionMs, jti: Utilities.getUuid() };
-  var encoded = Utilities.base64EncodeWebSafe(JSON.stringify(payload), Utilities.Charset.UTF_8).replace(/=+$/, '');
-  properties.setProperty('SESSION_' + payload.jti, String(payload.expiresAt));
-  return encoded + '.' + hmac_('token:' + encoded);
+  var properties=props_(),state=sessionEntries_(properties),now=Date.now();
+  var active=state.entries.filter(function(e){return e.expiresAt > now;});
+  if(active.length >= 200) fail_('BUSY','로그인 세션이 많습니다. 잠시 후 다시 시도해 주세요.');
+  var payload={role:role,providerId:providerId || null,expiresAt:now+KN.sessionMs,jti:Utilities.getUuid()};
+  var encoded=Utilities.base64EncodeWebSafe(JSON.stringify(payload),Utilities.Charset.UTF_8).replace(/=+$/,'');
+  var token=encoded+'.'+hmac_('token:'+encoded);
+  properties.deleteProperty(SESSION_INDEX_);
+  // Bounded expiry cleanup avoids deleting up to 200 Properties in one login.
+  var expired=state.entries.filter(function(e){return e.expiresAt <= now;}).slice(0,10);
+  expired.forEach(function(e){properties.deleteProperty('SESSION_'+e.jti);});
+  state.entries=state.entries.filter(function(e){return !expired.some(function(old){return old.jti === e.jti;});});
+  properties.setProperty('SESSION_'+payload.jti,String(payload.expiresAt));
+  state.entries.push({jti:payload.jti,expiresAt:payload.expiresAt});
+  saveSessionIndex_(properties,state);
+  return token;
 }
 function session_(token, role) {
   function invalid() { fail_('UNAUTHORIZED', '로그인이 만료되었거나 유효하지 않습니다. 다시 로그인해 주세요.'); }

@@ -14,7 +14,7 @@ async function context(viewport, gas=true) {
   const ctx=await browser.newContext({viewport});
   ctx.on('page',p=>{p.on('pageerror',error=>errors.push(error.message));p.on('request',r=>loaded.push(r.url()));});
   if(gas) {
-    await ctx.route('**/assets/js/runtime-config.js',route=>route.fulfill({contentType:'text/javascript',body:
+    await ctx.route('**/assets/js/runtime-config.js*',route=>route.fulfill({contentType:'text/javascript',body:
       "export const RUNTIME_CONFIG={backend:'gas',gasUrl:"+JSON.stringify(apiUrl)+",refreshIntervalMs:5000};export function resolveBackend(){return 'gas';}"}));
     await ctx.route(apiUrl+'**',async route=>{
       const req=route.request(), response=await h.fetch(req.url(),{method:req.method(),body:req.postData()});

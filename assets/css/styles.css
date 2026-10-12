@@ -377,3 +377,6 @@ main:focus-visible{outline:none}.welcome-selection,.welcome-lookup,.home-screen 
 
 /* Compact CI stays inside its own profile column at every viewport. */
 .profile-avatar.provider-profile{flex:none;display:inline-flex}.profile-avatar.provider-profile .provider-logo{width:100%;height:100%;max-width:100%}.topbar-right .profile-name{margin-left:0;white-space:nowrap;flex:none}
+
+/* Administrator scheduling controls: keep +/- buttons together. */
+.schedule-controls{display:flex;gap:8px;align-items:stretch}.schedule-controls .button{flex:1;white-space:nowrap}.admin-page-actions{max-width:100%;flex-wrap:wrap}.schedule-controls .button:disabled{opacity:.5;cursor:not-allowed}@media(max-width:800px){.admin-page-actions{width:100%;max-width:none;justify-content:flex-start}.schedule-controls{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.schedule-controls .button{font-size:11px;padding:10px 8px;white-space:normal}}

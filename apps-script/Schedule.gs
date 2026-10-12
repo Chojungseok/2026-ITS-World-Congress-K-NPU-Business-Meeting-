@@ -60,3 +60,28 @@ function extendSchedule_(db, session, input) {
   writeBatch_(db, changes); // One atomic capacity+4-event batch; publishes all scopes.
   return { previousLastTime:last, time:next, providerIds:KN.providers.map(function(p){return p.id;}), capacity:2 };
 }
+
+function shrinkSchedule_(db, session, input) {
+  // Admin POST only; caller owns the same lock as submit/approve/cancel/extend.
+  var last = lastActiveSlot_(db);
+  if (input.expectedLastTime !== last)
+    fail_('SCHEDULE_CHANGED', '상담 시간이 이미 변경되었습니다. 최신 현황을 확인한 후 다시 적용해 주세요.');
+  var baseLast = KN.times[KN.times.length-1];
+  if (parseSlot_(last).end <= parseSlot_(baseLast).end)
+    fail_('SCHEDULE_LIMIT', '기본 운영시간보다 줄일 수 없습니다.');
+  if (rows_(db,'requests').some(function(r){return r.time === last && [KN.status.pending,KN.status.confirmed].includes(r.status);}))
+    fail_('SCHEDULE_IN_USE', '해당 시간대에 진행 중인 상담 신청이 있어 시간을 줄일 수 없습니다.');
+  var times = operatingTimes_(db), nextLast = times[times.length-2], now = iso_(), changes = [];
+  KN.providers.forEach(function(p) {
+    provider_(db,p.id,false);
+    var original = slot_(db,p.id,last);
+    var row = Object.assign({},original,{active:false,updatedAt:now,updatedBy:'ITS Korea 관리자'});
+    var event = event_('시간 연장 취소','admin','ITS Korea 관리자',row,'','');
+    event.occurredAt=now;event.beforeCapacity=original.capacity;event.afterCapacity=original.capacity;
+    changes.push({type:'capacities',row:row._row,value:row},{type:'history',value:event});
+  });
+  // Never delete rows or existing requests. Atomic four rows + four audit events,
+  // public cache invalidation and all relevant revision publishing are shared.
+  writeBatch_(db,changes);
+  return {removedTime:last,time:nextLast,providerIds:KN.providers.map(function(p){return p.id;})};
+}

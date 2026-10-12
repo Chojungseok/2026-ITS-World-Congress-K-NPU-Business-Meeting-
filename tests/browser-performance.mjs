@@ -11,7 +11,7 @@ const gate=()=>{let release;const wait=new Promise(r=>{release=r;});return {wait
 async function client(hash,{pause=null}={}) {
  const ctx=await browser.newContext({viewport:{width:1440,height:1000}});
  const actions=[];const control={hold:null};
- await ctx.route('**/assets/js/runtime-config.js',route=>route.fulfill({contentType:'text/javascript',body:
+ await ctx.route('**/assets/js/runtime-config.js*',route=>route.fulfill({contentType:'text/javascript',body:
   "export const RUNTIME_CONFIG={backend:'gas',gasUrl:"+JSON.stringify(url)+",refreshIntervalMs:5000};export function resolveBackend(){return 'gas';}"}));
  await ctx.route(url+'**',async route=>{
   const r=route.request(),action=r.method()==='GET'?new URL(r.url()).searchParams.get('action'):JSON.parse(r.postData()).action;
@@ -55,7 +55,7 @@ try {
  await npu.page.locator('[name="providerId"]').selectOption('deepx');
  await npu.page.locator('[name="approvalCode"]').fill(h.credentials.deepx);
  await npu.page.locator('#provider-login-form button[type="submit"]').click();await npu.page.locator('.status-tabs').waitFor();await ready(npu.page);
- assertCalls('npu-login-submit',npu.actions,['authenticateProvider','getProviderRequests']);
+ assertCalls('npu-login-submit',npu.actions,['authenticateProvider']);
  await navigate(npu.page,'home');await navigate(npu.page,'npu');
  assertCalls('npu-list',npu.actions,['getProviderRequests']);
  await navigate(npu.page,'matching');assertCalls('matching',npu.actions,['getProviderRequests']);
@@ -87,7 +87,7 @@ try {
  assertCalls('admin-login-page',admin.actions,[]);
  await admin.page.locator('[name="id"]').fill(h.admin.id);await admin.page.locator('[name="password"]').fill(h.admin.password);
  await admin.page.locator('#admin-login-form button[type="submit"]').click();await admin.page.locator('#history-filters').waitFor();await ready(admin.page);
- assertCalls('admin-login-submit',admin.actions,['authenticateAdmin','getAdminOverview']);
+ assertCalls('admin-login-submit',admin.actions,['authenticateAdmin']);
  await navigate(admin.page,'home');await navigate(admin.page,'admin');assertCalls('admin-dashboard',admin.actions,['getAdminOverview']);
  await admin.page.locator('#history-filters [name="query"]').fill('테스트');
  await admin.page.evaluate(()=>{window.savedFilters=document.querySelector('#history-filters');});

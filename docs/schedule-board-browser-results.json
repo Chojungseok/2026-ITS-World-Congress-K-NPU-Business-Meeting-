@@ -1,0 +1,76 @@
+{
+  "initial": {
+    "http": 1,
+    "sheets": 1,
+    "noAuthentication": true
+  },
+  "unchanged": {
+    "probes": 3,
+    "sheetReads": 0,
+    "tablePreserved": true
+  },
+  "newWindow": {
+    "noopener": true,
+    "tokenTransfer": false
+  },
+  "aggregateUpdates": {
+    "pendingNotCounted": true,
+    "approval": true,
+    "cancellation": true,
+    "capacity": true,
+    "noPII": true
+  },
+  "shrink": {
+    "inUseBlocked": true,
+    "confirmation": true,
+    "buttonDisabledDuringWrite": true,
+    "allRolesUpdated": true,
+    "validDraftPreserved": true
+  },
+  "visibility": {
+    "hiddenCalls": 0,
+    "visibleImmediate": true
+  },
+  "lostWrite": {
+    "postCount": 1,
+    "latestSchedule": true
+  },
+  "screens": [
+    {
+      "width": 1366,
+      "height": 768,
+      "fit": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "fit": true
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "fit": true
+    },
+    {
+      "width": 2560,
+      "height": 1440,
+      "fit": true
+    },
+    {
+      "width": 320,
+      "height": 800,
+      "fit": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "fit": true
+    }
+  ],
+  "twoAdminTabs": {
+    "successes": 1,
+    "removedSlots": 1,
+    "staleRejected": true
+  },
+  "mock": true
+}

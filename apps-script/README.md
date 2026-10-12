@@ -1,8 +1,41 @@
 # Google Apps Script + Google Sheets 설정 안내
 
-기존 운영용 Web App URL이 프론트엔드에 설정되어 있습니다. 이미 운영 중인 환경은 바로 아래의 갱신 절차를 따르세요. 신규 환경은 1절부터 진행합니다. **코드를 복사하는 것만으로 Google Drive나 Spreadsheet가 생성되지는 않습니다.** 최초 구축 시 운영 담당자가 Google 권한을 승인하고 setupSystem()을 실행해야 실제 DB가 만들어집니다.
+기존 운영용 Web App URL이 프론트엔드에 설정되어 있습니다. 현재 새 기능은 바로 아래의 -10분 취소·공개 현황판 적용 절차부터 확인하세요. 이미 운영 중인 환경은 바로 아래의 갱신 절차를 따르세요. 신규 환경은 1절부터 진행합니다. **코드를 복사하는 것만으로 Google Drive나 Spreadsheet가 생성되지는 않습니다.** 최초 구축 시 운영 담당자가 Google 권한을 승인하고 setupSystem()을 실행해야 실제 DB가 만들어집니다.
 
-## 기존 V2 운영 환경에 V3 적용 (현재 버전)
+## 관리자 -10분 취소·공개 현황판 적용 (2026-10-12 현재)
+
+**기존 DB/인증정보/같은 /exec를 유지합니다. setupSystem/configureAuthentication/V2·V3 migration을 실행하지 않습니다.**
+
+1. 기존 V3.1이 Google에 반영돼 있으면 **Code.gs / Schedule.gs / Revision.gs / Diagnostics.gs**를 현재 로컬 전체 내용으로 교체합니다.
+2. **+ → 스크립트 → PublicBoard**를 추가하고 **PublicBoard.gs**를 복사합니다.
+3. 이전 로컬 V3.1 성능 변경이 Google에 아직 반영되지 않았다면 **Config.gs / Database.gs / Auth.gs**도 함께 교체합니다. 새 Code는 이들 V3.1 함수에 의존합니다.
+4. 기존 속성/manifest/서비스/나머지 V3 파일은 유지하고 저장합니다.
+5. **배포 → 배포 관리 → 기존 Web App 수정 → 새 버전 → 배포**. 같은 URL/실행 주체/접근 설정을 유지합니다.
+6. 로컬 backend:gas에서 시간 연장/축소 제한/행 FALSE/이력 4건/재활성화와 익명 #board 집계/10초 자동 갱신을 확인합니다. 실제 Google 시험은 운영자가 직접 수행합니다.
+7. backend:auto로 복원 → npm run sync-assets → npm run sync-assets -- --check → npm test → GitHub commit/push → Pages 반영을 확인합니다.
+8. 관리자 “현황판 새창 열기” 또는 Pages URL+#board로 행사 스크린을 엽니다. token을 URL에 붙이지 않습니다. 기본 4구간 아래 축소는 disabled, pending/confirmed가 있는 마지막 시간은 서버가 거부합니다.
+
+[22개 변경·보안·읽기 횟수·스크린 검증·배포 보고서](../docs/schedule-public-board.md)를 참고하세요. 새 시트/열/Google 리소스를 만들지 않았습니다.
+
+## 기존 V3 운영 환경의 V3.1 성능·통신 갱신 (이전 단계 참고)
+
+이번 작업에는 **Sheet migration/setupSystem/configureAuthentication 실행이 필요 없습니다.** 기존 /exec URL, SHEET_ID, TOKEN_SIGNING_SECRET, ADMIN_ID, ADMIN_PASSWORD_HASH, PROVIDER_CODE_*_HASH를 유지합니다. 신청/이력/시간표/정원을 초기화하지 않습니다.
+
+1. 운영 중인 기존 Apps Script 프로젝트를 엽니다.
+2. **Config.gs / Code.gs / Database.gs / Auth.gs**를 저장소의 같은 파일 전체 내용으로 교체합니다.
+3. 파일 옆 **+ → 스크립트 → Diagnostics**를 추가하고 **Diagnostics.gs** 전체 내용을 복사합니다. 나머지 .gs/manifest는 유지합니다.
+4. 저장합니다. setupSystem/configureAuthentication/migration 함수는 실행하지 않습니다.
+5. **배포 → 배포 관리 → 기존 Web App 수정(연필) → 새 버전 → 배포**. 기존 실행 주체/접근 권한과 /exec를 유지합니다.
+6. 공개 getConfig 요청에 apiVersion=2026-10-v3.1을 넣어 응답 meta.apiVersion이 같은지 확인합니다. 업데이트 직후 오래 열린 구버전 화면에는 새로고침 안내가 나옵니다.
+7. 로컬 runtime-config.js의 backend를 잠시 gas로 바꾸고 역할별 시험을 진행합니다. 실제 시험은 Google 운영자가 직접 수행하며 새 DB를 생성하지 않습니다. 시험 후 backend:auto/performanceDiagnostics:false로 복원합니다.
+8. frontend 버전은 build-version.js 한 곳에서 관리합니다. **npm run sync-assets → npm run sync-assets -- --check → npm test → GitHub add/commit/push** 순서로 Pages에 반영합니다. Google 새 버전 배포가 먼저입니다.
+9. 실제 Pages에서 모바일 신청 → PC 관리자 확인 → NPU 승인 → 다른 기기 조회/취소/정원 반환을 확인합니다.
+
+선택 성능 진단은 Script Property PERFORMANCE_DIAGNOSTICS=true, 로컬 frontend performanceDiagnostics:true입니다. action/method/버전/시간만 기록하고 개인정보/토큰/인증정보/ID/stack은 기록하지 않습니다. 시험 후 false 또는 속성 삭제로 끕니다. 서버가 만드는 KNPU_SESSION_INDEX_V1 파생 인덱스는 수동 설정하지 않습니다. 30분 token과 SESSION_* 검증은 유지됩니다.
+
+[28개 완료 항목·실제 공개 읽기 관측·모형 전후 수치·오류 복구·실기기 시험](../docs/communication-reliability.md)을 참고하세요. 이번 코드 작업이 실제 Google 재배포나 DB 변경을 수행한 것은 아닙니다.
+
+## 기존 V2 운영 환경에 V3 적용 (이전 단계; V3 미적용 환경만)
 
 **현재 V2 운영 DB에는 setupSystem/configureAuthentication 재실행이 필요 없습니다.** 기존 SHEET_ID·서명키·인증정보·세션·신청·이력을 유지합니다. 전체 파일 목록/이전 검사/실제 시험은 [V3 보고서](../docs/business-meeting-v3.md#2228-운영-적용-순서)를 따르세요.
 
@@ -40,7 +73,7 @@ NPU 5초/관리자 10초의 가벼운 revision 확인과 변경 시 부분 갱�
 - 서버 Script Cache의 공개 config: 30초. 신청자 개인정보/신청 목록은 이 캐시에 넣지 않습니다.
 - 페이지에서 정원을 변경하면 서버 캐시를 변경 전후 무효화하고 현재 브라우저 캐시도 무효화합니다. 늦게 도착한 변경 전 응답은 새 캐시를 덮어쓰지 못합니다.
 - 시트에서 **기업 설정/운영여부**를 직접 편집할 필요가 있으면 신청·승인 등의 운영을 잠시 멈춘 뒤 편집하고, Apps Script 편집기에서 **refreshPublicConfig()**를 실행하세요. 이는 공개 API가 아닌 운영자 전용 함수입니다. 자동 편집 트리거를 새로 설치하지 않습니다. 기존 브라우저까지 즉시 확인하려면 페이지를 새로고침합니다.
-- 수동 변경 후 이 함수를 생략하면 NPU/관리자 revision이 바뀌지 않아 자동 갱신되지 않을 수 있습니다. 반드시 실행하거나 수동 새로고침으로 확인하세요. 공개 config를 다시 요청하는 화면에서는 서버/브라우저 캐시가 겹치면 설정 표시가 약 60초 늦을 수 있습니다. ITS에서 선택한 시간의 잔여 자리는 캐시하지 않고 약 30초마다 새로 읽습니다.
+- 수동 변경 후 이 함수를 생략하면 NPU/관리자 revision이 바뀌지 않아 자동 갱신되지 않을 수 있습니다. 반드시 실행하거나 수동 새로고침으로 확인하세요. 공개 config를 다시 요청하는 화면에서는 서버/브라우저 캐시가 겹치면 설정 표시가 약 60초 늦을 수 있습니다. ITS에서는 5초 availability revision으로 확인하고 변경이 있을 때만 공개 snapshot을 읽습니다.
 - PRIVACY_NOTICE_VERSION/PRIVACY_RETENTION_TEXT는 서버 캐시 적중 시에도 새 속성과 비교합니다. 브라우저에 이미 받은 안내는 30초 캐시 또는 페이지 새로고침 후 갱신합니다. 제출 시 서버가 안내 버전을 다시 확인합니다.
 - 신청/승인/취소/정원 변경은 이 캐시를 신뢰하지 않고 잠금 안에서 실제 시트를 읽습니다. 정원 변경은 기존 NPU 화면을 사용해 검증과 처리이력을 남기세요.
 
@@ -65,6 +98,8 @@ NPU 5초/관리자 10초의 가벼운 revision 확인과 변경 시 부분 갱�
 | Auth.gs | 운영 인증 설정, 해시 검증, HMAC 세션, 본인확인 |
 | Database.gs | 요청별 batchGet snapshot, 공개 설정 캐시, 안전한 셀 쓰기, 신청·이력 일괄 저장 |
 | Services.gs | 신청·취소·승인·거절·시간별 정원 규칙 |
+| PublicBoard.gs | 기존 3열 snapshot을 집계하는 개인정보 없는 공개 현황판 |
+| Diagnostics.gs | 항상 API 버전 metadata, 선택적 개인정보 없는 server 단계 계측 |
 | Code.gs | doGet/doPost와 명시적인 API 허용 목록 |
 | Revision.gs | Script Properties 변경 버전, 경량 조회, 성공한 쓰기 이후 발행 |
 | appsscript.json | 서울 시간대, V8, Sheets API 서비스 및 권한 |
@@ -74,7 +109,7 @@ NPU 5초/관리자 10초의 가벼운 revision 확인과 변경 시 부분 갱�
 1. DB를 관리할 Google 계정으로 [Apps Script](https://script.google.com/)에 접속합니다.
 2. **새 프로젝트**를 클릭하고 이름을 `K-NPU Business Meeting Backend` 등으로 지정합니다.
 3. 기본 `Code.gs` 내용을 저장소의 `apps-script/Code.gs` 전체 내용으로 바꿉니다.
-4. 왼쪽 **파일 옆 + → 스크립트**로 나머지 9개 `.gs` 파일을 같은 이름으로 만듭니다. 각 파일의 내용을 그대로 복사합니다. 파일 확장자는 편집기에서 자동으로 붙을 수 있습니다.
+4. 왼쪽 **파일 옆 + → 스크립트**로 나머지 11개 `.gs` 파일을 같은 이름으로 만듭니다. 각 파일의 내용을 그대로 복사합니다. 파일 확장자는 편집기에서 자동으로 붙을 수 있습니다.
 5. 코드에 운영 승인코드, 비밀번호, Spreadsheet ID를 직접 입력하지 않습니다.
 
 ## 3. Google Sheets API 서비스 설정
@@ -250,11 +285,11 @@ Google 설정과 로컬 GAS 모드 테스트를 먼저 완료합니다. 실제 �
 
 ## 13. 통신·보안·오류 처리
 
-- 공개 GET: getConfig, getAvailability, getAvailabilityRevision. 개인정보/신청ID/토큰을 GET 쿼리로 보내지 않습니다.
+- 공개 GET: getConfig, getAvailability, getAvailabilityRevision, getPublicBoard, getPublicBoardRevision. 개인정보/신청ID/토큰을 GET 쿼리로 보내지 않습니다.
 - 나머지는 `POST` + `Content-Type: text/plain;charset=utf-8` JSON 본문입니다.
 - 쿠키/Authorization 헤더를 보내지 않아 불필요한 preflight를 피합니다. 토큰은 POST 본문에만 둡니다.
 - ContentService 응답의 Google 리다이렉트를 follow하고 JSON 결과를 읽습니다. `no-cors`나 JSONP를 사용하지 않습니다.
-- 응답: `{ok:true,data:...}` 또는 `{ok:false,error:{code,message}}`.
+- 응답: `{ok:true,data:...,meta:{apiVersion}}` 또는 `{ok:false,error:{code,message},meta:{apiVersion}}`. 모든 요청의 apiVersion을 실행 전에 검사합니다.
 - 45초 응답 제한. 연결 실패 시 성공으로 처리하지 않으며 쓰기를 자동 재시도하지 않습니다. 응답이 끊겨도 서버 반영은 끝났을 수 있으므로 먼저 조회/관리자 화면에서 결과를 확인합니다.
 - 잘못된 이메일과 없는 ID는 같은 오류입니다. ID는 UUID이며 조회 시도 제한도 있습니다. 이메일 소유권 OTP까지 구현한 것은 아닙니다.
 - NPU/관리자 토큰은 HMAC-SHA256 서명, role/providerId/expiresAt/jti와 서버 활성 세션 확인을 거칩니다. 로그아웃한 토큰은 서버에서 폐기됩니다. 클라이언트가 보낸 providerId로 권한을 결정하지 않습니다.
@@ -279,7 +314,11 @@ Google 설정과 로컬 GAS 모드 테스트를 먼저 완료합니다. 실제 �
 | UNAUTHORIZED | 30분 만료, 로그아웃, 인증정보 교체에 의한 세션 해제. 재로그인 |
 | CAPACITY_FULL | 실제 확정 건수/정원/운영여부를 새로고침 |
 | NOTICE_CHANGED | 페이지 새로고침 후 바뀐 개인정보 안내와 동의 재확인 |
-| NETWORK_ERROR | 자동 재제출하지 말고 기존 처리 결과부터 확인 |
+| NETWORK_TIMEOUT / NETWORK_FETCH_FAILED | timeout/연결 실패. 쓰기는 자동 재제출하지 말고 기존 처리 결과부터 확인 |
+| HTTP_ERROR / INVALID_RESPONSE | HTTP 상태/JSON 응답/Google 접근권한 확인. 읽기는 제공된 재조회 버튼 사용 |
+| API_VERSION_MISMATCH | Google 기존 Web App 새 버전이 먼저 배포됐는지 확인 후 새 버전 불러오기. 쓰기 재전송 금지 |
+| SCHEDULE_CHANGED / SCHEDULE_IN_USE / SCHEDULE_LIMIT | 시간 변경 경합 / 진행 신청 존재 / 기본시간 또는 날짜 경계 제한. 최신 현황을 확인 |
+| SERVER_BUSY | 잠금·활성 session 수 확인. 안전한 조회만 최대 1회 자동 retry |
 | REVISION_PENDING이 계속 발생 | 저장과 버전 발행 사이 동기화 미완료. 앱은 30초 이상 지속 시 제한된 전체 조회로 보완합니다. 실제 신청/이력 결과를 확인하고 편집기에서 refreshPublicConfig()를 실행하면 모든 버전을 다시 발행합니다. setup/auth 재설정은 하지 않습니다. |
 | RATE_LIMITED | 제한 구간이 지난 뒤 인증정보 확인 후 재시도 |
 
@@ -287,6 +326,6 @@ Google 설정과 로컬 GAS 모드 테스트를 먼저 완료합니다. 실제 �
 
 **이번 버전 갱신 후 확인:** 동일한 /exec의 새 버전 배포, Pages 반영, 실제 origin의 GET/POST/리다이렉트/JSON/CORS, 두 기기의 공유와 마지막 자리 동시 승인, 호출 수와 응답 속도. 공개 설정 캐시가 있어도 실제 정원 검증은 최신 DB를 사용하는지 위 흐름으로 확인합니다.
 
-로컬 검증: Node 테스트 103개, 기존 모바일/PC 회귀·성능 검사와 신규 변경 감지 브라우저 검사 통과. [변경 감지 결과와 재현 방법](../docs/lightweight-change-detection.md)을 참고하세요.
+로컬 검증: Node 테스트 145개, 기존 모바일/PC 회귀·성능 검사와 신규 변경 감지 브라우저 검사 통과. [변경 감지 결과와 재현 방법](../docs/lightweight-change-detection.md)을 참고하세요.
 
 로컬 자동 테스트는 실제 .gs 파일을 Google 서비스 모형에서 실행합니다. 실제 Google 서비스의 CORS, 권한, 할당량, 네트워크 경합을 검증한 결과가 아닙니다. 서버/URL 설정 후 이 문서의 실기기 테스트를 반드시 진행하세요.

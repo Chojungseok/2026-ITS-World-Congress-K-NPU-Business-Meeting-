@@ -1,4 +1,4 @@
-import { PROVIDERS, TIMES, STATUS, providerById, capacityFor, isSlotOpen, PRIVACY_NOTICE } from './config.js';
+import { PROVIDERS, TIMES, BASE_TIMES, STATUS, providerById, capacityFor, isSlotOpen, PRIVACY_NOTICE } from './config.js';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 import { PROVIDER_LOGOS } from './logos.js';
 import { BROCHURES } from './brochures.js';
@@ -193,10 +193,10 @@ export function adminLogin() {
 
 export function adminPage(requests, providers = PROVIDERS, history = []) {
   const allTimes = [...TIMES, ...new Set([...requests, ...history].map(row => row.time).filter(time => time && !TIMES.includes(time)))];
-  return pageHeading('OPERATIONS OVERVIEW', '비즈매칭 운영 대시보드', '남은 상담 자리와 모든 처리 기록을 한눈에 확인하세요.', '<div class="admin-page-actions"><button id="extend-schedule" class="button primary">상담 시간 +10분 연장</button><button id="refresh-admin" class="button secondary">' + icon('reset') + ' 새로고침</button><button id="admin-logout" class="text-button">로그아웃</button></div>') +
+  return pageHeading('OPERATIONS OVERVIEW', '비즈매칭 운영 대시보드', '남은 상담 자리와 모든 처리 기록을 한눈에 확인하세요.', '<div class="admin-page-actions"><span class="schedule-controls"><button id="extend-schedule" class="button primary">상담 시간 +10분 연장</button><button id="shrink-schedule" class="button secondary" '+(TIMES.length<=BASE_TIMES.length?'disabled title="기본 운영시간보다 줄일 수 없습니다."':'')+'>마지막 연장 취소 -10분</button></span><button id="open-public-board" class="button secondary">현황판 새창 열기</button><button id="refresh-admin" class="button secondary">' + icon('reset') + ' 새로고침</button><button id="admin-logout" class="text-button">로그아웃</button></div>') +
     stats(requests) + adminProgress(requests, providers) +
-    `<section class="panel admin-list history-panel"><div class="panel-heading"><div><h2>전체 활동 로그 <span class="count-pill">${history.length}</span></h2><p>신청·취소·승인·거절·정원 변경·시간 연장을 하나의 로그로 확인합니다.</p></div></div>
-    <form id="history-filters" class="filters unified-log-filters" role="search"><label class="filter-search"><span class="sr-only">활동 로그 검색</span>${icon('search')}<input name="query" placeholder="신청ID / 기업명 / 담당자 검색" aria-label="활동 로그 검색"></label><label><span class="sr-only">NPU 기업</span><select name="provider">${options(providers, '모든 NPU 기업')}</select></label><label><span class="sr-only">상담 시간</span><select name="time">${options(allTimes, '모든 시간')}</select></label><label><span class="sr-only">처리 유형</span><select name="action">${options(['신청', '취소', '승인', '거절', '정원 변경', '시간 연장', '기존 상태'], '모든 처리')}</select></label><label><span class="sr-only">시간 정렬</span><select name="order"><option value="desc">최신순</option><option value="asc">오래된 순</option></select></label><button class="icon-button" type="reset" aria-label="로그 필터 초기화">${icon('reset')}</button></form>
+    `<section class="panel admin-list history-panel"><div class="panel-heading"><div><h2>전체 활동 로그 <span class="count-pill">${history.length}</span></h2><p>신청·취소·승인·거절·정원 변경·시간 연장·연장 취소를 하나의 로그로 확인합니다.</p></div></div>
+    <form id="history-filters" class="filters unified-log-filters" role="search"><label class="filter-search"><span class="sr-only">활동 로그 검색</span>${icon('search')}<input name="query" placeholder="신청ID / 기업명 / 담당자 검색" aria-label="활동 로그 검색"></label><label><span class="sr-only">NPU 기업</span><select name="provider">${options(providers, '모든 NPU 기업')}</select></label><label><span class="sr-only">상담 시간</span><select name="time">${options(allTimes, '모든 시간')}</select></label><label><span class="sr-only">처리 유형</span><select name="action">${options(['신청', '취소', '승인', '거절', '정원 변경', '시간 연장', '시간 연장 취소', '기존 상태'], '모든 처리')}</select></label><label><span class="sr-only">시간 정렬</span><select name="order"><option value="desc">최신순</option><option value="asc">오래된 순</option></select></label><button class="icon-button" type="reset" aria-label="로그 필터 초기화">${icon('reset')}</button></form>
     <p class="history-note">기록된 처리 시각을 기준으로 정렬합니다. 시각이 없는 기존 상태는 로그 끝에 표시하며, 신청ID를 누르면 현재 신청 상세를 볼 수 있습니다.</p>
     <div id="history-results">${adminHistoryRows(history, requests)}</div></section>`;
 }
@@ -230,7 +230,7 @@ export function adminHistoryRows(events, requests = [], order = 'desc') {
     <td class="request-id-cell">${event.requestId ? '<button type="button" class="text-button request-id" data-detail="' + e(event.requestId) + '">' + e(event.requestId) + '</button><strong>' + e(event.itsCompany) + '</strong>' + (request ? '<small>' + e(request.contactName) + ' · ' + request.attendees + '명</small>' : '') : '<span class="muted">신청ID 없음 · 기업 설정</span>'}</td>
     <td>${e(providerById(event.providerId).name)}<small>${e(event.time || '모든 시간대 · 이전 설정')}</small></td>
     <td class="history-actor">${e(event.actor)}</td>
-    <td>${event.action === '시간 연장' ? '<span class="history-change">10분 추가 · 정원 2건</span>' : event.action === '정원 변경' ? '<span class="history-change">최대 ' + event.beforeCapacity + '건 → ' + event.afterCapacity + '건</span>' : '<div class="history-status"><small>' + e(event.action === '기존 상태' ? '기존 저장 상태' : (event.fromStatus || '신규 신청') + ' →') + '</small>' + badge(event.toStatus) + '</div>'}</td>
+    <td>${event.action === '시간 연장' ? '<span class="history-change">10분 추가 · 정원 2건</span>' : event.action === '시간 연장 취소' ? '<span class="history-change">10분 운영 종료 · 기록 보존</span>' : event.action === '정원 변경' ? '<span class="history-change">최대 ' + event.beforeCapacity + '건 → ' + event.afterCapacity + '건</span>' : '<div class="history-status"><small>' + e(event.action === '기존 상태' ? '기존 저장 상태' : (event.fromStatus || '신규 신청') + ' →') + '</small>' + badge(event.toStatus) + '</div>'}</td>
   </tr>`;
   }).join('')}</tbody></table></div><div class="table-footer">총 <strong>${events.length}</strong>건의 로그 · ${order === 'asc' ? '오래된 순' : '최신순'}</div>`;
 }
@@ -377,4 +377,19 @@ export function extensionDialog(lastTime) {
   const hhmm = n => String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
   const next = end+10 < 1440 ? hhmm(end)+' – '+hhmm(end+10) : '날짜 경계: 연장 불가';
   return '<h2 id="dialog-title">상담 시간을 연장하시겠습니까?</h2><dl class="extension-summary"><div><dt>현재 마지막 상담</dt><dd>'+e(lastTime)+'</dd></div><div><dt>추가 상담</dt><dd>'+e(next)+'</dd></div></dl><p class="dialog-description">4개 NPU 기업에 동일하게 10분 상담시간이 추가됩니다. 새 시간대의 정원은 기업별 2건입니다.</p><p id="dialog-error" class="inline-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button secondary" data-close-dialog>취소</button><button type="button" class="button primary" id="confirm-extension" '+(end+10>=1440?'disabled':'')+'>10분 연장</button></div>';
+}
+
+export function shrinkDialog(lastTime, nextLastTime) {
+  return '<h2 id="dialog-title">마지막 연장 시간을 취소하시겠습니까?</h2><dl class="extension-summary"><div><dt>현재 마지막 상담</dt><dd>'+e(lastTime)+'</dd></div><div><dt>취소 후 마지막 상담</dt><dd>'+e(nextLastTime)+'</dd></div></dl><p class="dialog-description">4개 NPU 기업의 해당 시간 접수가 중단됩니다. 진행 중인 신청이 있으면 적용할 수 없습니다. 기존 신청과 처리 기록은 보존됩니다.</p><p id="dialog-error" class="inline-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button secondary" data-close-dialog>취소</button><button type="button" class="button danger" id="confirm-shrink">-10분 적용</button></div>';
+}
+export function publicBoardPage() {
+  return `<div class="public-board"><header class="board-header"><div><span class="board-kicker">2026 강릉 ITS 세계총회 · ITS KOREA</span><h1>K-NPU Business Meeting</h1><p>비즈매칭 운영 현황</p></div><div class="board-live"><span id="board-connection"><i></i> 자동 업데이트</span><small id="board-sync">현황을 확인하고 있습니다</small></div></header><p class="board-error" id="board-error" role="alert" hidden></p><section id="public-board-content" aria-label="시간별 상담 현황"><p class="board-loading" role="status">현재 상담 현황을 불러오고 있습니다…</p></section><footer class="board-footer"><span>승인된 상담을 기준으로 표시합니다. 승인대기 신청은 정원에 포함되지 않습니다.${demo ? ' · 로컬 예시 데이터' : ''}</span><button type="button" id="refresh-board">현황 다시 확인</button></footer></div>`;
+}
+export function publicBoardContent(board) {
+  const slots=board.providers.flatMap(p=>p.slots),confirmed=slots.reduce((n,s)=>n+s.confirmed,0),remaining=slots.reduce((n,s)=>n+s.remaining,0);
+  const range=board.times[0].slice(0,5)+'–'+board.times.at(-1).slice(-5);
+  return `<div class="board-summary"><div><span>현재 상담시간</span><strong>${e(range)}</strong></div><div><span>매칭 확정</span><strong>${confirmed}<small>건</small></strong></div><div><span>상담 가능 자리</span><strong>${remaining}<small>자리</small></strong></div></div><p class="board-scroll-hint">표를 좌우로 움직여 모든 기업을 확인하세요.</p><div class="board-table-wrap"><table class="board-table ${board.times.length>4?'board-dense':''}"><caption class="sr-only">NPU 기업별 상담시간, 확정 건수, 정원 및 잔여 자리</caption><thead><tr><th scope="col">상담시간<small>확정 / 정원 · 잔여</small></th>${board.providers.map(p=>`<th scope="col" data-board-provider="${e(p.id)}">${mark(p)}<span>${e(p.name)}</span></th>`).join('')}</tr></thead><tbody>${board.times.map(time=>`<tr data-board-time="${e(time)}"><th scope="row"><strong>${e(time.slice(0,5))}</strong><small>– ${e(time.slice(-5))}</small></th>${board.providers.map(p=>{
+    const s=p.slots.find(s=>s.time===time),open=s.active && s.remaining>0;
+    return `<td data-board-cell="${e(p.id)}" class="${open?'board-open':'board-closed'}"><div class="board-count"><strong>${s.confirmed}</strong><span> / ${s.capacity}</span></div><small>확정 / 정원</small><div class="board-remaining">잔여 <b>${s.remaining}</b></div><span class="board-cell-status">${open?'접수 가능':s.active?'마감':'접수 중지'}</span></td>`;
+  }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }

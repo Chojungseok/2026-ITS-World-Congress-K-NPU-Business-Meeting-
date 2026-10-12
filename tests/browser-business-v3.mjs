@@ -13,7 +13,7 @@ async function client(hash,width=1440,{mock=false,failLogo=false}={}){
  const calls=[],pdf=[];
  ctx.on('request',r=>{if(r.url().includes('.pdf'))pdf.push(r.url());});
  if(!mock){
- await ctx.route('**/assets/js/runtime-config.js',r=>r.fulfill({contentType:'text/javascript',body:'export const RUNTIME_CONFIG={backend:"gas",gasUrl:'+JSON.stringify(url)+',refreshIntervalMs:30000,revisionPolling:{providerMs:5000,adminMs:10000,retryMs:30000}};export function resolveBackend(){return "gas";}'}));
+ await ctx.route('**/assets/js/runtime-config.js*',r=>r.fulfill({contentType:'text/javascript',body:'export const RUNTIME_CONFIG={backend:"gas",gasUrl:'+JSON.stringify(url)+',refreshIntervalMs:30000,revisionPolling:{providerMs:5000,adminMs:10000,retryMs:30000}};export function resolveBackend(){return "gas";}'}));
  await ctx.route(url+'**',async route=>{const r=route.request(),action=r.method()==='GET'?new URL(r.url()).searchParams.get('action'):JSON.parse(r.postData()).action;calls.push(action);const response=await h.fetch(r.url(),{method:r.method(),body:r.postData()});await route.fulfill({contentType:'application/json',body:await response.text()});});
  }
  if(failLogo)await ctx.route('**/assets/logos/deepx-logo.svg',r=>r.fulfill({status:404,body:''}));

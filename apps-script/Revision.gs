@@ -11,6 +11,9 @@ function revisionState_() {
   return state;
 }
 function revisionValue_(state, scope, providerId) {
+  // Public board uses only aggregate-relevant availability versions. Pending
+  // applications do not occupy seats and therefore do not cause board Sheet reads.
+  if (scope === 'board') return KN.providers.map(function(p){return state.availability[p.id] || '0';}).join('|');
   return scope === 'admin' ? state.admin : (state[scope][providerId] || '0');
 }
 function revision_(scope, providerId) {

@@ -1,5 +1,7 @@
+import { BUILD_VERSION } from './build-version.js';
+import { clockNow, recordTiming } from './performance.js';
 import { api } from './api.js';
-import { STATUS, STORAGE_KEY, TIMES, providerById, applyPublicConfig, PRIVACY_NOTICE } from './config.js';
+import { STATUS, STORAGE_KEY, TIMES, BASE_TIMES, providerById, applyPublicConfig, PRIVACY_NOTICE } from './config.js';
 import * as view from './views.js';
 import { RUNTIME_CONFIG } from './runtime-config.js';
 import { readSession, saveSession, clearSession } from './session-store.js';
@@ -18,12 +20,14 @@ const main = $('#main');
 main.style.overflowAnchor = 'none';
 const dialog = $('#result-dialog');
 let route = '';
-const restoredProvider = api.mode === 'gas' ? readSession('provider') : null;
+const publicBoardEntry=location.hash==='#board';
+const restoredProvider = api.mode === 'gas' && !publicBoardEntry ? readSession('provider') : null;
 let providerToken = restoredProvider?.token || null;
 let activeProvider = restoredProvider?.providerId || '';
-let adminToken = api.mode === 'gas' ? readSession('admin')?.token || null : null;
+let adminToken = api.mode === 'gas' && !publicBoardEntry ? readSession('admin')?.token || null : null;
 let providerFilter = '';
 let currentRows = [];
+let currentBoard = null;
 let currentHistory = [];
 let currentProviders = [];
 let activeAdminSlot = null;
@@ -47,11 +51,12 @@ let automaticTimer;
 let visibilityGeneration = 0;
 let probeOnReturn = false;
 let pollingError = '';
+let userActions = 0;
 const pollingConfig = RUNTIME_CONFIG.revisionPolling || {
   providerMs: RUNTIME_CONFIG.refreshIntervalMs, adminMs: RUNTIME_CONFIG.refreshIntervalMs,
   retryMs: RUNTIME_CONFIG.refreshIntervalMs
 };
-const titles = { home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', 'find-id': '신청 ID 찾기', brochures: 'NPU 기업 소개자료', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
+const titles = { board:'비즈매칭 공개 현황판', home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', 'find-id': '신청 ID 찾기', brochures: 'NPU 기업 소개자료', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
 
 function toast(message, isError = false) {
   const element = $('#toast');
@@ -65,17 +70,35 @@ function errorAt(selector, error) {
   const element = $(selector);
   if (element) { element.textContent = error.message; element.hidden = false; }
   else toast(error.message, true);
+  if (error.code === 'API_VERSION_MISMATCH' && !$('#update-client')) {
+    const button=document.createElement('button');button.id='update-client';button.type='button';button.className='button secondary';button.textContent='새 버전 불러오기';
+    button.onclick=()=>{const target=new URL(location.href);target.searchParams.set('update',String(Date.now()));location.replace(target.href);};
+    (element || main).append(button);
+  }
+  if (error.uncertain && route === 'apply' && !$('#recover-application')) {
+    const link=document.createElement('a');link.id='recover-application';link.className='button secondary';link.href='#find-id';link.textContent='신청 ID 찾기로 접수 확인';
+    $('#application-error')?.after(link);
+  }
 }
 async function busy(button, action, errorSelector) {
   if (button.disabled) return;
-  const original = button.innerHTML;
+  const original = button.innerHTML;let completed=false;
+  userActions++; dataGeneration++; clearTimeout(automaticTimer);
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  button.textContent = '처리 중…';
+  const formId=button.form?.getAttribute('id') || '';
+  button.textContent = formId === 'application-form' ? '신청을 접수하고 있습니다…' : formId.includes('login') ? '로그인 중…' : '처리 중…';
   if (errorSelector && $(errorSelector)) $(errorSelector).hidden = true;
-  try { await action(); }
-  catch (error) { errorAt(errorSelector || '#nonexistent-error', error); }
-  finally { button.disabled = false; button.removeAttribute('aria-busy'); button.innerHTML = original; }
+  try { await action();completed=true; }
+  catch (error) {
+    if(error.uncertain && route === 'lookup' && lookupRow)await refresh({force:true}).catch(()=>{});
+    if (error.uncertain && (providerToken || adminToken) && ['npu','matching','admin'].includes(route)) await refresh({force:true}).catch(()=>{});
+    errorAt(errorSelector || '#nonexistent-error', error);
+  }
+  finally { userActions--;button.disabled = false;button.removeAttribute('aria-busy');button.innerHTML = original;
+    // Writes that already refreshed a protected snapshot have its revision. A new
+    // pending application needs only one lightweight availability reconciliation.
+    scheduleAutomatic(completed && formId === 'application-form' ? 0 : undefined); }
 }
 function showDialog(content, { wide = false, keepSlot = false, keepRequest = false } = {}) {
   if (!keepSlot) activeAdminSlot = null;
@@ -121,11 +144,11 @@ function showTimes(form, slots) {
 async function loadTimes() {
   const form = $('#application-form');
   if (!form || form.dataset.ready !== 'true') return;
-  const version = ++availabilityVersion;
+  const version = ++availabilityVersion, generation=dataGeneration;
   const providerId = form.elements.providerId.value;
   const snapshot = api.mode === 'gas' ? await api.getAvailabilitySnapshot(providerId) : { slots: await api.getAvailability(providerId) };
   const slots = snapshot.slots;
-  if (version !== availabilityVersion || !form.isConnected) return;
+  if (version !== availabilityVersion || generation !== dataGeneration || !form.isConnected) return;
   if (snapshot.config) applyPublicConfig(snapshot.config);
   else if (api.mode === 'mock') applyPublicConfig(await api.getConfig());
   loadedAvailabilityRevision = snapshot.revision ?? null;
@@ -133,7 +156,7 @@ async function loadTimes() {
   showTimes(form, slots);
 }
 async function initializeApplication() {
-  const form = $('#application-form'), version = ++availabilityVersion;
+  const form = $('#application-form'), version = ++availabilityVersion, generation=dataGeneration;
   const initialProvider = form.elements.providerId.value;
   form.dataset.ready = 'false';
   $('button[type="submit"]', form).disabled = true;
@@ -147,6 +170,7 @@ async function initializeApplication() {
   // Current servers include config in the same authoritative public snapshot. Old
   // deployments and an inactive initial provider still use the safe config fallback.
   const initial = await availability;
+  if (initial.error && initial.error.code !== 'VALIDATION') throw initial.error;
   const config = initial.snapshot?.config || await api.getConfig();
   if (!form.isConnected || version !== availabilityVersion) return;
   applyPublicConfig(config);
@@ -194,7 +218,9 @@ function bindApply() {
     busy($('button[type="submit"]', form), async () => {
       const record = await api.submitRequest(values);
       form.reset();
-      loadTimes().catch(error => toast(error.message, true));
+      // Pending requests do not reserve capacity; retain the selected provider and
+      // current availability instead of another Sheets read after a successful write.
+      form.elements.providerId.value=record.providerId;summary();
       const escapedId = view.escapeHtml(record.id);
       showDialog('<span class="dialog-symbol success">' + view.icon('check') + '</span><span class="eyebrow gray">REQUEST RECEIVED</span><h2 id="dialog-title">상담 신청이 접수되었습니다</h2><p class="dialog-description">NPU 기업의 검토 후 매칭이 확정됩니다.<br>아래 신청ID를 꼭 보관해 주세요.</p><div class="success-summary">' + view.badge(record.status) + '<strong>' + view.escapeHtml(providerById(record.providerId).name) + ' · ' + view.escapeHtml(record.time) + '</strong></div><label class="field">신청ID<input readonly id="new-request-id" value="' + escapedId + '"></label><p class="muted">신청ID와 신청 이메일로 신청 상태를 조회할 수 있습니다. 신청ID를 안전하게 보관해 주세요.<br>자동 확인 이메일은 발송되지 않습니다.</p><div class="dialog-actions"><button class="button secondary" id="copy-id">' + view.icon('copy') + ' ID 복사</button><button class="button primary" id="go-lookup">신청 확인하기 ' + view.icon('arrow') + '</button></div>');
       $('#copy-id').onclick = async () => {
@@ -288,16 +314,18 @@ function bindProviderLogin() {
     const form = event.currentTarget;
     busy($('button[type="submit"]', form), async () => {
       const providerId = form.elements.providerId.value;
-      const token = await api.authenticateProvider({
+      const result = await api.authenticateProvider({
         providerId,
-        approvalCode: form.elements.approvalCode.value
+        approvalCode: form.elements.approvalCode.value,
+        ...(api.mode === 'gas' ? {includeInitialData:true} : {})
       });
+      const token=typeof result === 'string' ? result : result.token;
       activeProvider = providerId;
       providerToken = token;
       if (api.mode === 'gas') saveSession('provider', token);
       form.elements.approvalCode.value = '';
       providerFilter = '';
-      await renderRoute(false);
+      await renderRoute(false,{providerSnapshot:result.snapshot});
     }, '#provider-login-error');
   });
 }
@@ -341,10 +369,11 @@ function bindAdminLogin() {
     event.preventDefault();
     const form = event.currentTarget;
     busy($('button[type="submit"]', form), async () => {
-      adminToken = await api.authenticateAdmin({ id: form.elements.id.value, password: form.elements.password.value });
+      const result=await api.authenticateAdmin({id:form.elements.id.value,password:form.elements.password.value,...(api.mode === 'gas' ? {includeOverview:true} : {})});
+      adminToken=typeof result === 'string' ? result : result.token;
       if (api.mode === 'gas') saveSession('admin', adminToken);
       form.elements.password.value = '';
-      await renderRoute(false);
+      await renderRoute(false,{adminOverview:result.overview});
     }, '#admin-login-error');
   });
 }
@@ -365,6 +394,16 @@ function filterHistory() {
 }
 
 function bindAdmin(savedHistoryFilters) {
+  updateScheduleActions();
+  $('#open-public-board').onclick=()=>{const target=new URL(location.href);target.search='';target.hash='board';window.open(target.href,'_blank','noopener');};
+  $('#shrink-schedule').onclick=()=>{
+    const expectedLastTime=TIMES.at(-1);
+    showDialog(view.shrinkDialog(expectedLastTime,TIMES.at(-2)));
+    $('#confirm-shrink').onclick=event=>busy(event.currentTarget,async()=>{
+      try {await api.shrinkSchedule({token:adminToken,expectedLastTime});await refresh({force:true});dialog.close();toast('마지막 연장 시간을 10분 취소했습니다.');}
+      catch(error){if(!error.uncertain)await refresh({force:true}).catch(()=>{});throw error;}
+    },'#dialog-error');
+  };
   $('#extend-schedule').onclick = () => {
     const expectedLastTime = TIMES.filter(time => currentProviders.some(p => p.enabled?.[time] !== false)).at(-1);
     showDialog(view.extensionDialog(expectedLastTime));
@@ -458,13 +497,21 @@ main.addEventListener('click', event => {
     });
   }
 });
-async function renderRoute(focus = true) {
+async function renderRoute(focus = true, initial = {}) {
+  const started=clockNow();
   const version = ++renderVersion;
   loadedAvailabilityRevision = null;
   loadedRevision = null; legacyRevisionServer = false; revisionRecovery = false; pendingRevisionSince = null; pollingError = '';
   const newRoute = location.hash.replace('#', '');
   route = titles[newRoute] ? newRoute : 'home';
   document.body.classList.toggle('home-screen', route === 'home');
+  document.body.classList.toggle('board-screen',route==='board');
+  if(route!=='board')main.classList.remove('board-dense-view');
+  $('#sidebar').hidden=route==='board';$('.topbar').hidden=route==='board';$('.workspace>.footer').hidden=route==='board';
+  if(route==='board'){
+    currentRows=[];currentHistory=[];currentProviders=[];currentBoard=null;
+    if(!document.querySelector('[data-board-style]')){const css=document.createElement('link');css.rel='stylesheet';css.dataset.boardStyle='';css.href=new URL('./assets/css/board.css?v='+BUILD_VERSION,document.baseURI).href;document.head.append(css);}
+  }
   const itsScreen = ['apply', 'lookup', 'find-id', 'brochures'].includes(route);
   const providerScreen = route === 'npu' || route === 'matching';
   $('#sidebar .management-label').hidden = itsScreen;
@@ -494,6 +541,7 @@ async function renderRoute(focus = true) {
   main.dataset.loading = 'true';
   try {
     if (route === 'home') main.innerHTML = view.homePage();
+    if(route==='board'){main.innerHTML=view.publicBoardPage();bindBoard();await loadBoardView(version);}
     if (route === 'brochures') main.innerHTML = view.brochuresPage();
     if (route === 'find-id') { lookupRow = null; main.innerHTML = view.findIdsPage(); bindFindIds(); }
     if (route === 'apply') {
@@ -518,14 +566,14 @@ async function renderRoute(focus = true) {
         }
       } else {
         main.innerHTML = loadingPanel('NPU 상담 현황', '상담 신청을 불러오는 중…');
-        await loadProviderView(version, false);
+        await loadProviderView(version, false, initial.providerSnapshot);
       }
     }
     if (route === 'admin') {
       if (!adminToken) { main.innerHTML = view.adminLogin(); bindAdminLogin(); }
       else {
         main.innerHTML = loadingPanel('비즈매칭 운영 대시보드', '운영 현황을 불러오는 중…');
-        await loadAdminView(version, false);
+        await loadAdminView(version, false, initial.adminOverview);
       }
     }
     if (focus && version === renderVersion) { main.focus({ preventScroll: true }); window.scrollTo({ top: 0 }); }
@@ -533,7 +581,8 @@ async function renderRoute(focus = true) {
     if (version !== renderVersion) return;
     if (await recoverSession(error)) return;
     // Preserve entered application data on a network/config failure.
-    if (route === 'apply' && $('#application-form')) {
+    if(route==='board' && $('#public-board-content')){boardStatus(error);errorAt('#board-error',error);}
+    else if (route === 'apply' && $('#application-form')) {
       errorAt('#application-error', error);
       let retry = $('#retry-application');
       if (!retry) {
@@ -542,12 +591,17 @@ async function renderRoute(focus = true) {
         $('#application-error').after(retry);
       }
       retry.onclick = () => busy(retry, async () => { await initializeApplication(); retry.remove(); }, '#application-error');
+    } else if ((route === 'npu' || route === 'matching') && !providerToken && $('#provider-login-form')) {
+      errorAt('#provider-login-error',error);
+      let retry=$('#retry-provider-config');
+      if(!retry){retry=document.createElement('button');retry.id='retry-provider-config';retry.className='button secondary';retry.type='button';retry.textContent='기업 설정 다시 불러오기';$('#provider-login-error').after(retry);}
+      retry.onclick=()=>busy(retry,async()=>{const config=await api.getConfig();applyPublicConfig(config);const select=$('#provider-login-form [name="providerId"]'),selected=select.value;select.innerHTML=view.options(config.providers.filter(p=>p.active!==false),'기업을 선택하세요');select.value=selected;retry.remove();},'#provider-login-error');
     } else {
       main.innerHTML = '<section class="panel error-panel"><h1>화면을 불러오지 못했습니다</h1><p role="alert">' + view.escapeHtml(error.message) + '</p><button class="button primary" id="retry-page">다시 시도</button></section>';
       $('#retry-page').onclick = () => renderRoute(false);
     }
   } finally {
-    if (version === renderVersion) { main.dataset.loading = 'false'; scheduleAutomatic(); }
+    if (version === renderVersion) { main.dataset.loading = 'false';recordTiming('route',route,clockNow()-started);scheduleAutomatic(); }
   }
 }
 
@@ -566,13 +620,13 @@ function capacityEditing() {
   return !!document.activeElement?.closest('.capacity-settings') ||
     [...document.querySelectorAll('.slot-capacity-form [name="capacity"]')].some(input => input.value !== input.defaultValue);
 }
-async function loadProviderView(version, partial) {
+async function loadProviderView(version, partial, initial) {
   const token = providerToken, id = activeProvider, page = route, generation = dataGeneration;
-  const snapshot = api.mode === 'gas' ? await api.getProviderSnapshot(token) : { requests: await api.getProviderRequests(token) };
+  const snapshot = initial || (api.mode === 'gas' ? await api.getProviderSnapshot(token) : { requests: await api.getProviderRequests(token) });
   const rows = snapshot.requests;
   if (version !== renderVersion || generation !== dataGeneration || token !== providerToken || route !== page) return;
   // New server includes fresh public config; adapter seeds its cache without another GET.
-  const config = await api.getConfig();
+  const config = snapshot.config || await api.getConfig();
   if (version !== renderVersion || generation !== dataGeneration || token !== providerToken || id !== activeProvider || route !== page) return;
   if (api.mode === 'gas') applyPublicConfig(config);
   const provider = config.providers.find(p => p.id === id);
@@ -593,6 +647,7 @@ async function loadProviderView(version, partial) {
     const template = document.createElement('template'); template.innerHTML = html;
     for (const selector of ['.stats-grid', '.slot-overview', '#provider-requests', '.request-section .count-pill', '.matching-panel'])
       replaceRegion(selector, template);
+    document.querySelectorAll('.slot-capacity-form').forEach(form=>{if(!TIMES.includes(form.dataset.time))form.remove();});
     if (capacityEditing()) capacityViewDeferred = true;
     else { if (replaceRegion('.capacity-settings', template)) bindCapacity(); capacityViewDeferred = false; }
   }
@@ -600,8 +655,8 @@ async function loadProviderView(version, partial) {
   if (partial) restoreViewport();
   return !unchanged;
 }
-async function loadAdminView(version, partial) {
-  const token = adminToken, generation = dataGeneration, overview = await api.getAdminOverview(token);
+async function loadAdminView(version, partial, initial) {
+  const token = adminToken, generation = dataGeneration, overview = initial || await api.getAdminOverview(token);
   if (version !== renderVersion || generation !== dataGeneration || token !== adminToken || route !== 'admin') return;
   // Legacy server fallback derives public times from the already-returned capacities.
   applyPublicConfig(overview.config || {
@@ -611,6 +666,7 @@ async function loadAdminView(version, partial) {
   });
   const unchanged = sameData(currentRows, overview.requests) && sameData(currentHistory, overview.history) && sameData(currentProviders, overview.providers);
   currentRows = overview.requests; currentHistory = overview.history; currentProviders = overview.providers;
+  updateScheduleActions();
   acceptRevision(overview);
   if (partial && unchanged) return false;
   const restoreViewport = preserveViewport();
@@ -668,7 +724,7 @@ function flushDeferredCapacity() {
 }
 main.addEventListener('focusout', () => setTimeout(flushDeferredCapacity, 0));
 async function recoverSession(error) {
-  if (!['UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)) return false;
+  if (route==='board' || !['UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)) return false;
   if (route === 'admin') { adminToken = null; clearSession('admin'); }
   else { providerToken = null; activeProvider = ''; clearSession('provider'); }
   currentRows = []; currentHistory = []; dialog.close();
@@ -687,21 +743,21 @@ function refresh({ force = false, changesOnly = false } = {}) {
         if (revision.revision === loadedAvailabilityRevision) return;
       } catch(error) { if (!['UNKNOWN_ACTION','REVISION_PENDING'].includes(error.code)) throw error; }
     }
-    const detecting = changesOnly && api.mode === 'gas' && !legacyRevisionServer &&
-      (route === 'admin' || ['npu', 'matching'].includes(route));
+    const detecting = changesOnly && (api.mode === 'gas' || route==='board') && !legacyRevisionServer &&
+      (route === 'board' || route === 'admin' || ['npu', 'matching'].includes(route));
     if (detecting) {
       const visibility = visibilityGeneration;
       try {
-        const result = route === 'admin' ? await api.getAdminRevision({ token: adminToken })
+        const result = route === 'board' ? await api.getPublicBoardRevision() : route === 'admin' ? await api.getAdminRevision({ token: adminToken })
           : await api.getProviderRevision({ token: providerToken });
         if (version !== renderVersion || generation !== dataGeneration || visibility !== visibilityGeneration || document.visibilityState !== 'visible') return;
         revisionRecovery = false; pendingRevisionSince = null;
-        if (result.revision === loadedRevision) { flushDeferredCapacity(); return; }
+        if (result.revision === loadedRevision) { if(route==='board')boardStatus();flushDeferredCapacity(); return; }
       } catch (error) {
         if (version !== renderVersion || generation !== dataGeneration || visibility !== visibilityGeneration) return;
         // During rollout, old servers retain 30s full polling. An interrupted
         // cross-service commit uses the same bounded fallback until revision recovers.
-        if (error.code === 'UNKNOWN_ACTION') legacyRevisionServer = true;
+        if (error.code === 'UNKNOWN_ACTION') {if(route==='board')throw error;legacyRevisionServer = true;}
         else if (error.code === 'REVISION_PENDING') {
           pendingRevisionSince ??= Date.now();
           // A normal write may still be finishing. Keep lightweight probes fast;
@@ -712,10 +768,11 @@ function refresh({ force = false, changesOnly = false } = {}) {
         else throw error;
       }
     }
-    if (version !== renderVersion || generation !== dataGeneration) return;
+    if (version !== renderVersion || generation !== dataGeneration || (changesOnly && userActions)) return;
     const previousRows = currentRows, previousRevision = loadedRevision;
     let changed = false;
-    if (route === 'apply') await loadTimes();
+    if (route === 'board') changed=await loadBoardView(version);
+    else if (route === 'apply') await loadTimes();
     else if (route === 'lookup' && lookupRow) {
       const original = lookupRow, latest = await api.findRequest({ id: original.id, email: original.email });
       if (version !== renderVersion || route !== 'lookup' || lookupRow !== original) return;
@@ -723,7 +780,7 @@ function refresh({ force = false, changesOnly = false } = {}) {
       if (!sameData(original, latest)) showLookup(lookupRow);
     } else if ((route === 'npu' || route === 'matching') && providerToken) changed = await loadProviderView(version, true);
     else if (route === 'admin' && adminToken) changed = await loadAdminView(version, true);
-    if (detecting && changed && previousRevision !== null && version === renderVersion && generation === dataGeneration) {
+    if (route!=='board' && detecting && changed && previousRevision !== null && version === renderVersion && generation === dataGeneration) {
       if (route === 'admin') toast('운영 현황이 업데이트되었습니다.');
       else {
         const ids = new Set(previousRows.map(row => row.id));
@@ -739,7 +796,7 @@ function refresh({ force = false, changesOnly = false } = {}) {
   refreshPromise = pending; return pending;
 }
 function needsPolling() {
-  return route === 'apply' || (route === 'lookup' && !!lookupRow) ||
+  return route === 'board' || route === 'apply' || (route === 'lookup' && !!lookupRow) ||
     (['npu', 'matching'].includes(route) && !!providerToken) || (route === 'admin' && !!adminToken);
 }
 $('#menu-toggle').onclick = () => {
@@ -780,6 +837,7 @@ $('#provider-logout').onclick = async () => {
 };
 function automaticDelay() {
   if (revisionRecovery) return pollingConfig.retryMs;
+  if (route==='board')return pollingConfig.boardMs || pollingConfig.adminMs || 10000;
   if (route === 'apply') return pollingConfig.availabilityMs || 5000;
   if (!legacyRevisionServer && ['npu', 'matching'].includes(route) && providerToken) return pollingConfig.providerMs;
   if (!legacyRevisionServer && route === 'admin' && adminToken) return pollingConfig.adminMs;
@@ -787,12 +845,12 @@ function automaticDelay() {
 }
 function scheduleAutomatic(delay = probeOnReturn ? 0 : automaticDelay()) {
   clearTimeout(automaticTimer);
-  if (api.mode === 'gas' && needsPolling() && document.visibilityState === 'visible')
+  if ((api.mode === 'gas' || route==='board') && needsPolling() && !userActions && navigator.onLine !== false && document.visibilityState === 'visible')
     automaticTimer = setTimeout(automaticRefresh, delay);
 }
 async function automaticRefresh() {
   clearTimeout(automaticTimer);
-  if (api.mode !== 'gas' || !needsPolling() || document.visibilityState !== 'visible' ||
+  if ((api.mode !== 'gas' && route!=='board') || !needsPolling() || userActions || navigator.onLine === false || document.visibilityState !== 'visible' ||
       main.dataset.loading === 'true' || (refreshPromise && refreshVersion === renderVersion)) return;
   // Partial rendering protects drafts/filters while detection continues.
   if (document.querySelector('[aria-busy="true"]') ||
@@ -803,7 +861,36 @@ async function automaticRefresh() {
   try { await refresh({ changesOnly: true }); pollingError = ''; }
   catch (error) {
     scheduleAutomatic(pollingConfig.retryMs);
-    if (pollingError !== error.message) toast(error.message, true);
+    if(route==='board'){boardStatus(error);errorAt('#board-error',error);}
+    else if (pollingError !== error.message) toast(error.message, true);
     pollingError = error.message;
   }
+}
+
+window.addEventListener('offline',()=>{clearTimeout(automaticTimer);if(route==='board')boardStatus(true);});
+window.addEventListener('online',()=>{probeOnReturn=true;automaticRefresh();});
+function updateScheduleActions() {
+  const button=$('#shrink-schedule');
+  if(!button)return;
+  const limited=TIMES.length<=BASE_TIMES.length;
+  button.disabled=limited;
+  button.title=limited?'기본 운영시간보다 줄일 수 없습니다.':'';
+}
+function boardStatus(error) {
+  const connection=$('#board-connection');if(!connection)return;
+  connection.classList.toggle('stale',!!error);
+  connection.innerHTML='<i></i>'+ (error?'연결 확인 필요':'자동 업데이트');
+  if(!error){$('#board-sync').textContent='마지막 확인 '+new Intl.DateTimeFormat('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Asia/Seoul'}).format(new Date());$('#board-error').hidden=true;}
+}
+function bindBoard() {
+  $('#refresh-board').onclick=()=>refresh({force:true}).catch(error=>{boardStatus(error);errorAt('#board-error',error);});
+}
+async function loadBoardView(version) {
+  const generation=dataGeneration,snapshot=await api.getPublicBoard();
+  if(version!==renderVersion || generation!==dataGeneration || route!=='board')return false;
+  const changed=!sameData(currentBoard?.times,snapshot.times)||!sameData(currentBoard?.providers,snapshot.providers);
+  main.classList.toggle('board-dense-view',snapshot.times.length>4);
+  currentBoard=snapshot;acceptRevision(snapshot);
+  if(changed)$('#public-board-content').innerHTML=view.publicBoardContent(snapshot);
+  boardStatus();return changed;
 }

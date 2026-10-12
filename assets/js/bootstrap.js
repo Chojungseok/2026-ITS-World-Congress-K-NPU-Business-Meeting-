@@ -1,3 +1,4 @@
+const bootstrapStarted=performance.now();
 // 일반 스크립트로 먼저 실행해 file:// 접근에도 빈 화면 대신 안내를 표시합니다.
 const startupTitle = document.getElementById('startup-title');
 const startupMessage = document.getElementById('startup-message');
@@ -7,8 +8,7 @@ if (location.protocol === 'file:') {
   startupMessage.textContent = '이 페이지는 로컬 서버를 통해 열어야 합니다. 같은 폴더의 start-local.cmd 파일을 더블클릭하면 서버와 브라우저가 함께 열립니다.';
   localHelp.hidden = false;
 } else {
-  import('./app.js').catch(error => {
-    console.error('K-NPU startup failed:', error);
+  import('./app.js').then(async()=>{const {recordTiming}=await import('./performance.js');recordTiming('bootstrap','bootstrap',performance.now()-bootstrapStarted);}).catch(() => {
     const panel = document.createElement('section');
     panel.className = 'startup-panel';
     const title = document.createElement('h1');

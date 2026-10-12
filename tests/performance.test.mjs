@@ -1,9 +1,10 @@
+import {API_VERSION} from '../assets/js/build-version.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createGasApi} from '../assets/js/gas-api.js';
 import {createHarness} from './gas-harness.mjs';
 const url='https://script.google.com/macros/s/test/exec';
-const reply=data=>new Response(JSON.stringify({ok:true,data}));
+const reply=data=>new Response(JSON.stringify({ok:true,meta:{apiVersion:API_VERSION},data}));
 const config=capacity=>({providers:[{id:'deepx',capacities:{'16:50 – 17:00':capacity}}],times:['16:50 – 17:00'],privacy:{version:'v1'}});
 const good=(h,action,input={})=>h.value(h.call(action,input));
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
@@ -18,8 +19,8 @@ test('config concurrent callers share one promise/network call, then cache expir
  clock=30000;await api.getConfig();assert.equal(calls,2);
 });
 test('failed config requests are not cached and can be retried',async()=>{
- let calls=0;const api=createGasApi({url,fetchImpl:async()=>{if(++calls===1)throw Error('offline');return reply(config(5));}});
- await assert.rejects(api.getConfig(),{code:'NETWORK_ERROR'});
+ let calls=0;const api=createGasApi({url,retryReads:false,fetchImpl:async()=>{if(++calls===1)throw Error('offline');return reply(config(5));}});
+ await assert.rejects(api.getConfig(),{code:'NETWORK_FETCH_FAILED'});
  assert.equal((await api.getConfig()).providers[0].capacities['16:50 – 17:00'],5);assert.equal(calls,2);
 });
 test('capacity mutation invalidates client config both after success and after a lost response',async()=>{

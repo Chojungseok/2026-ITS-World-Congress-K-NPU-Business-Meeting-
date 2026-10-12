@@ -1,3 +1,4 @@
+import {API_VERSION} from '../assets/js/build-version.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createGasApi} from '../assets/js/gas-api.js';
@@ -7,7 +8,7 @@ const url='https://script.google.com/macros/s/test/exec';
 
 test('adapter keeps signatures, only config/availability use GET; secrets are in simple POST bodies',async()=>{
   const sent=[];
-  const api=createGasApi({url,fetchImpl:async(target,options)=>{sent.push({target,options});return new Response(JSON.stringify({ok:true,data:'value'}));}});
+  const api=createGasApi({url,fetchImpl:async(target,options)=>{sent.push({target,options});return new Response(JSON.stringify({ok:true,meta:{apiVersion:API_VERSION},data:'value'}));}});
   await api.getConfig(); await api.getAvailability('deepx');
   await api.authenticateProvider({providerId:'deepx',approvalCode:'private-code'});
   await api.authenticateAdmin({id:'private-id',password:'private-password'});
@@ -41,8 +42,8 @@ test('adapter detects HTML, malformed JSON envelope, HTTP, API and network failu
     [async()=>new Response('<html>Sign in</html>'),'INVALID_RESPONSE'],
     [async()=>new Response('{"ok":true}'),'INVALID_RESPONSE'],
     [async()=>new Response('{}',{status:500}),'HTTP_ERROR'],
-    [async()=>new Response('{"ok":false,"error":{"code":"CAPACITY_FULL","message":"마감"}}'),'CAPACITY_FULL'],
-    [async()=>{throw Error('private network detail');},'NETWORK_ERROR']
+    [async()=>new Response(JSON.stringify({ok:false,meta:{apiVersion:API_VERSION},error:{code:'CAPACITY_FULL',message:'마감'}})),'CAPACITY_FULL'],
+    [async()=>{throw Error('private network detail');},'NETWORK_FETCH_FAILED']
   ]) {
     let calls=0; const api=createGasApi({url,fetchImpl:async(...args)=>{calls++;return fetchImpl(...args);}});
     await assert.rejects(api.submitRequest({}),{code}); assert.equal(calls,1);

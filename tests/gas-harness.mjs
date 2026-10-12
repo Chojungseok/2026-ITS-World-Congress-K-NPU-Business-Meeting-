@@ -6,7 +6,7 @@ import { randomUUID, createHmac } from 'node:crypto';
 export function createHarness({ sources = {} } = {}) {
   const properties = new Map(), books = new Map(), cache = new Map();
   let locked = false, clock = Date.now(), nextSheet = 1, created = 0, failBatch = false, beforeBatch = null;
-  const counters = { locks: 0, batches: 0, batchGets: 0, rangeReads: 0, headerReads: 0, lastRows: 0, opens: 0 };
+  const counters = { locks: 0, batches: 0, batchGets: 0, rangeReads: 0, headerReads: 0, lastRows: 0, opens: 0, propertyScans:0, batchCells:0 };
   class Sheet {
     constructor(name) { this.name = name; this.id = nextSheet++; this.data = []; this.maxRows = 1000; this.maxColumns = 26; }
     getName() { return this.name; }
@@ -36,7 +36,7 @@ export function createHarness({ sources = {} } = {}) {
     getProperty: key => properties.get(key) ?? null,
     setProperty: (key,value) => properties.set(key,String(value)),
     deleteProperty: key => properties.delete(key),
-    getProperties: () => Object.fromEntries(properties),
+    getProperties: () => {counters.propertyScans++;return Object.fromEntries(properties);},
     setProperties: obj => Object.entries(obj).forEach(([k,v])=>properties.set(k,String(v)))
   };
   const context = vm.createContext({
@@ -73,7 +73,9 @@ export function createHarness({ sources = {} } = {}) {
         if (!sheet) throw Error('Unknown sheet');
         const column = letters => [...letters].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0)-1;
         const from = Number(match[3] || 1)-1, until = Number(match[5] || sheet.data.length);
-        return { range, values: structuredClone(sheet.data.slice(from,until).map(row=>row.slice(column(match[2]),column(match[4])+1))) };
+        const values=structuredClone(sheet.data.slice(from,until).map(row=>row.slice(column(match[2]),column(match[4])+1)));
+        counters.batchCells+=values.reduce((n,row)=>n+row.length,0);
+        return {range,values};
       });
       return { valueRanges };
     } }, batchUpdate: (body,id) => {
@@ -98,9 +100,9 @@ export function createHarness({ sources = {} } = {}) {
     } } },
     ContentService: { MimeType: { JSON:'application/json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) }
   });
-  for(const name of ['Config','Revision','Database','Setup','Migration','MigrationV3','Schedule','Auth','Services','Code'])
+  for(const name of ['Config','Diagnostics','Revision','Database','Setup','Migration','MigrationV3','Schedule','PublicBoard','Auth','Services','Code'])
     vm.runInContext(sources[name] ?? fs.readFileSync(new URL('../apps-script/'+name+'.gs',import.meta.url),'utf8'),context,{filename:name+'.gs'});
-  const call = (action,input={},method='POST') => JSON.parse(JSON.stringify(context.handle_(method,{...input,action})));
+  const call = (action,input={},method='POST') => JSON.parse(JSON.stringify(context.handle_(method,{apiVersion:context.KN.apiVersion,...input,action})));
   const value = result => { if(!result.ok) throw Object.assign(Error(result.error.message), {code:result.error.code}); return result.data; };
   const credentials = Object.fromEntries(['deepx','mobilint','furiosa','rebellions'].map(id=>[id,randomUUID()]));
   const admin = { id:'test-admin-'+randomUUID(), password:randomUUID() };

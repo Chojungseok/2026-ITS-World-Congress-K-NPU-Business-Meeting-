@@ -24,7 +24,7 @@ const newestHistory = events => events.map((event, index) => ({ event, index }))
 const validCapacity = value => Number.isInteger(value) && value >= 0 && value <= 50; // Historical storage validation only.
 const writableCapacity = value => Number.isInteger(value) && value >= 0 && value <= 2;
 const validSlotTime = time => /^\d{2}:\d{2} – \d{2}:\d{2}$/.test(time);
-const historyActions = ['신청', '취소', '승인', '거절', '정원 변경', '시간 연장', '기존 상태'];
+const historyActions = ['신청', '취소', '승인', '거절', '정원 변경', '시간 연장', '시간 연장 취소', '기존 상태'];
 const baselineHistory = requests => requests.map(row => ({
   id: 'BASE-' + row.id, occurredAt: null, action: '기존 상태', actor: '이전 데이터',
   requestId: row.id, itsCompany: row.itsCompany, providerId: row.providerId,
@@ -139,7 +139,7 @@ function validHistory(event) {
   return event && typeof event.id === 'string' && historyActions.includes(event.action)
     && typeof event.actor === 'string' && !!providerById(event.providerId)
     && (event.occurredAt === null || (typeof event.occurredAt === 'string' && Number.isFinite(Date.parse(event.occurredAt))))
-    && (['정원 변경', '시간 연장'].includes(event.action)
+    && (['정원 변경', '시간 연장', '시간 연장 취소'].includes(event.action)
       ? event.requestId === null && (event.time == null || ([...BASE_TIMES, ...LEGACY_TIMES, ...PREVIOUS_TIMES].includes(event.time) || validSlotTime(event.time))) && validCapacity(event.beforeCapacity) && validCapacity(event.afterCapacity)
       : typeof event.requestId === 'string' && typeof event.itsCompany === 'string' && typeof event.time === 'string'
         && Object.values(STATUS).includes(event.toStatus)
@@ -181,9 +181,22 @@ const owned = (requests, id, email) => {
 };
 const newSession = value => { const token = uid(); sessions.set(token, value); return token; };
 
+function publicBoardData(data) {
+  return {times:[...data.times],providers:PROVIDERS.map(p=>({id:p.id,name:p.name,english:p.english,slots:data.times.map(time=>{
+    const capacity=capacityAt(data,p.id,time),confirmed=count(data.requests,p.id,time),active=p.active!==false && p.enabled?.[time]!==false;
+    return {time,capacity,confirmed,remaining:active?Math.max(0,capacity-confirmed):0,active};
+  })}))};
+}
+async function publicBoardVersion(data) {
+  // Local-only aggregate hash. No applicant data or extra storage schema.
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(data)));
+  return [...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('');
+}
 export const api = {
   mode: 'mock',
   async getConfig() { const data = read(); return clone({ providers: configuredProviders(data), times: data.times }); },
+  async getPublicBoard() {const data=publicBoardData(read());return {...data,revision:await publicBoardVersion(data)};},
+  async getPublicBoardRevision() {return {revision:await publicBoardVersion(publicBoardData(read()))};},
   async getAvailability(providerId) {
     if (!providerById(providerId)) fail('NPU 기업을 선택해 주세요.');
     const data = read();
@@ -303,6 +316,18 @@ export const api = {
           actorRole:'admin', providerId:p.id, requestId:null, time, beforeCapacity:0, afterCapacity:2 });
       }
       return {previousLastTime:last,time,providerIds:PROVIDERS.map(p=>p.id),capacity:2};
+    });
+  },
+  async shrinkSchedule({token,expectedLastTime}) {
+    session(token,'admin');
+    return mutate(data=>{
+      const last=data.times.at(-1);
+      if(last!==expectedLastTime)throw Object.assign(new Error('상담 시간이 이미 변경되었습니다. 최신 현황을 확인해 주세요.'),{code:'SCHEDULE_CHANGED'});
+      if(data.times.length<=BASE_TIMES.length)throw Object.assign(new Error('기본 운영시간보다 줄일 수 없습니다.'),{code:'SCHEDULE_LIMIT'});
+      if(data.requests.some(r=>r.time===last && [STATUS.PENDING,STATUS.CONFIRMED].includes(r.status)))throw Object.assign(new Error('해당 시간대에 진행 중인 상담 신청이 있어 시간을 줄일 수 없습니다.'),{code:'SCHEDULE_IN_USE'});
+      data.times.pop(); // Keep the capacity entries, requests and all earlier history.
+      for(const p of PROVIDERS)data.history.push({id:uid(),occurredAt:new Date().toISOString(),action:'시간 연장 취소',actor:'ITS Korea 관리자',actorRole:'admin',providerId:p.id,requestId:null,time:last,beforeCapacity:capacityAt(data,p.id,last),afterCapacity:capacityAt(data,p.id,last)});
+      return {removedTime:last,time:data.times.at(-1),providerIds:PROVIDERS.map(p=>p.id)};
     });
   },
   async logout(token) { sessions.delete(token); },

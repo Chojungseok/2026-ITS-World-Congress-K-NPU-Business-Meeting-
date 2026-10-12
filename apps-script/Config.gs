@@ -1,5 +1,6 @@
 // All secrets belong in Script Properties, never in this file.
 var KN = {
+  apiVersion: '2026-10-v3.1',
   status: { pending: '승인대기', confirmed: '매칭확정', rejected: '매칭거절', cancelled: '신청취소' },
   providers: [
     { id: 'deepx', name: '딥엑스', english: 'DEEPX', capacity: 2 },
@@ -36,8 +37,11 @@ function iso_() { return new Date().toISOString(); }
 function active_(value) { return value === true || value === 'TRUE'; }
 function withLock_(action) {
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) fail_('BUSY', '다른 요청을 처리 중입니다. 잠시 후 다시 확인해 주세요.');
-  try { return action(); } finally { lock.releaseLock(); }
+  var start = Date.now(), acquired = lock.tryLock(20000);
+  if (performanceContext_) performanceContext_.lockWaitMs += Math.max(0,Date.now()-start);
+  if (!acquired) fail_('BUSY', '다른 요청을 처리 중입니다. 잠시 후 다시 확인해 주세요.');
+  var held = Date.now();
+  try { return action(); } finally { if (performanceContext_) performanceContext_.lockHeldMs += Math.max(0,Date.now()-held); lock.releaseLock(); }
 }
 function text_(value, max, label) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max)

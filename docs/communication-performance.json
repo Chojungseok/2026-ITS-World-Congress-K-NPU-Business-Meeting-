@@ -1,0 +1,1828 @@
+{
+  "baseline": "0e1f4ebf89dfd75aab522c22a6560e273fa74043",
+  "fixture": "200 synthetic requests + 200 audit rows; 1440x1000; 3 fresh contexts/flow; static responses 20ms and API responses 100ms simulated delay; Google service doubles with zero lock contention. No live auth or writes.",
+  "before": {
+    "Home": {
+      "elapsedMs": 336.6,
+      "readyMs": 328.9,
+      "staticMs": 267.8,
+      "gasHttpCount": 0,
+      "actions": [],
+      "sheetBatchGetCount": 0,
+      "sheetRangeReads": 0,
+      "sheetCells": 0,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 0,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 16,
+      "samples": [
+        {
+          "elapsedMs": 898.3,
+          "readyMs": 889.2,
+          "staticMs": 828.3,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 16
+        },
+        {
+          "elapsedMs": 336.6,
+          "readyMs": 328.9,
+          "staticMs": 267.8,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 16
+        },
+        {
+          "elapsedMs": 316.5,
+          "readyMs": 308.8,
+          "staticMs": 247.9,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 16
+        }
+      ]
+    },
+    "Apply": {
+      "elapsedMs": 454.7,
+      "readyMs": 453,
+      "staticMs": 330,
+      "gasHttpCount": 1,
+      "actions": [
+        "getAvailability"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 756,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 1693,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 17,
+      "samples": [
+        {
+          "elapsedMs": 454.7,
+          "readyMs": 453,
+          "staticMs": 323.5,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 756,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 1693,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 17
+        },
+        {
+          "elapsedMs": 447.3,
+          "readyMs": 445.7,
+          "staticMs": 330,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 756,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 1693,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 17
+        },
+        {
+          "elapsedMs": 476.6,
+          "readyMs": 474.9,
+          "staticMs": 336.2,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 756,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 1693,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 17
+        }
+      ]
+    },
+    "Submit": {
+      "elapsedMs": 306.9,
+      "readyMs": 257.7,
+      "staticMs": 47,
+      "gasHttpCount": 2,
+      "actions": [
+        "submitRequest",
+        "getAvailability"
+      ],
+      "sheetBatchGetCount": 2,
+      "sheetRangeReads": 1,
+      "sheetCells": 4335,
+      "lockAcquisitions": 1,
+      "lockWaitMs": 0,
+      "payloadBytes": 2247,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 19,
+      "samples": [
+        {
+          "elapsedMs": 307.2,
+          "readyMs": 257.7,
+          "staticMs": 47,
+          "gasHttpCount": 2,
+          "actions": [
+            "submitRequest",
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 1,
+          "sheetCells": 4315,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 2247,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 306.9,
+          "readyMs": 267.2,
+          "staticMs": 47.1,
+          "gasHttpCount": 2,
+          "actions": [
+            "submitRequest",
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 1,
+          "sheetCells": 4335,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 2247,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 291.4,
+          "readyMs": 228,
+          "staticMs": 30.9,
+          "gasHttpCount": 2,
+          "actions": [
+            "submitRequest",
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 1,
+          "sheetCells": 4355,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 2247,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        }
+      ]
+    },
+    "Provider login": {
+      "elapsedMs": 386.6,
+      "readyMs": 385.5,
+      "staticMs": 34.5,
+      "gasHttpCount": 2,
+      "actions": [
+        "authenticateProvider",
+        "getProviderRequests"
+      ],
+      "sheetBatchGetCount": 2,
+      "sheetRangeReads": 0,
+      "sheetCells": 3627,
+      "lockAcquisitions": 1,
+      "lockWaitMs": 0,
+      "payloadBytes": 100337,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 19,
+      "samples": [
+        {
+          "elapsedMs": 396.2,
+          "readyMs": 395,
+          "staticMs": 46.2,
+          "gasHttpCount": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 0,
+          "sheetCells": 3627,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 100337,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 386.6,
+          "readyMs": 385.5,
+          "staticMs": 34.2,
+          "gasHttpCount": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 0,
+          "sheetCells": 3627,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 100337,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 372.4,
+          "readyMs": 371.3,
+          "staticMs": 34.5,
+          "gasHttpCount": 2,
+          "actions": [
+            "authenticateProvider",
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 0,
+          "sheetCells": 3627,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 100337,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        }
+      ]
+    },
+    "Admin login": {
+      "elapsedMs": 392.6,
+      "readyMs": 391.5,
+      "staticMs": 43.6,
+      "gasHttpCount": 2,
+      "actions": [
+        "authenticateAdmin",
+        "getAdminOverview"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 6259,
+      "lockAcquisitions": 2,
+      "lockWaitMs": 0,
+      "payloadBytes": 164460,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 18,
+      "samples": [
+        {
+          "elapsedMs": 389.7,
+          "readyMs": 388.7,
+          "staticMs": 35.3,
+          "gasHttpCount": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 2,
+          "lockWaitMs": 0,
+          "payloadBytes": 164460,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 18
+        },
+        {
+          "elapsedMs": 392.6,
+          "readyMs": 391.5,
+          "staticMs": 46.2,
+          "gasHttpCount": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 2,
+          "lockWaitMs": 0,
+          "payloadBytes": 164460,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 18
+        },
+        {
+          "elapsedMs": 394.9,
+          "readyMs": 394,
+          "staticMs": 43.6,
+          "gasHttpCount": 2,
+          "actions": [
+            "authenticateAdmin",
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 2,
+          "lockWaitMs": 0,
+          "payloadBytes": 164460,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 18
+        }
+      ]
+    },
+    "Provider refresh": {
+      "elapsedMs": 159.3,
+      "readyMs": 157.9,
+      "staticMs": 144,
+      "gasHttpCount": 1,
+      "actions": [
+        "getProviderRequests"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 3607,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 100124,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 20,
+      "samples": [
+        {
+          "elapsedMs": 168.3,
+          "readyMs": 167.2,
+          "staticMs": 151.6,
+          "gasHttpCount": 1,
+          "actions": [
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 3607,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 100124,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        },
+        {
+          "elapsedMs": 159.3,
+          "readyMs": 157.9,
+          "staticMs": 144,
+          "gasHttpCount": 1,
+          "actions": [
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 3607,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 100124,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        },
+        {
+          "elapsedMs": 151.3,
+          "readyMs": 150.1,
+          "staticMs": 138.6,
+          "gasHttpCount": 1,
+          "actions": [
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 3607,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 100124,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        }
+      ]
+    },
+    "Admin overview": {
+      "elapsedMs": 179.2,
+      "readyMs": 178.1,
+      "staticMs": 178.1,
+      "gasHttpCount": 1,
+      "actions": [
+        "getAdminOverview"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 6259,
+      "lockAcquisitions": 1,
+      "lockWaitMs": 0,
+      "payloadBytes": 164255,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 19,
+      "samples": [
+        {
+          "elapsedMs": 190.1,
+          "readyMs": 188.9,
+          "staticMs": 188.9,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 164255,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 174.6,
+          "readyMs": 173.4,
+          "staticMs": 173.4,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 164255,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 179.2,
+          "readyMs": 178.1,
+          "staticMs": 178.1,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 164255,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        }
+      ]
+    }
+  },
+  "after": {
+    "Home": {
+      "elapsedMs": 273.2,
+      "readyMs": 265.9,
+      "staticMs": 205,
+      "gasHttpCount": 0,
+      "actions": [],
+      "sheetBatchGetCount": 0,
+      "sheetRangeReads": 0,
+      "sheetCells": 0,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 0,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js"
+      ],
+      "assetCount": 17,
+      "samples": [
+        {
+          "elapsedMs": 280.1,
+          "readyMs": 272.5,
+          "staticMs": 211.1,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js"
+          ],
+          "assetCount": 17
+        },
+        {
+          "elapsedMs": 272.8,
+          "readyMs": 264.2,
+          "staticMs": 195.8,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js"
+          ],
+          "assetCount": 17
+        },
+        {
+          "elapsedMs": 273.2,
+          "readyMs": 265.9,
+          "staticMs": 205,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js"
+          ],
+          "assetCount": 17
+        }
+      ]
+    },
+    "Apply": {
+      "elapsedMs": 472.5,
+      "readyMs": 471.1,
+      "staticMs": 299.8,
+      "gasHttpCount": 1,
+      "actions": [
+        "getAvailability"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 756,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 1730,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 19,
+      "samples": [
+        {
+          "elapsedMs": 461.6,
+          "readyMs": 460.1,
+          "staticMs": 302.7,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 756,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 1730,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 472.5,
+          "readyMs": 471.1,
+          "staticMs": 296,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 756,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 1730,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 472.5,
+          "readyMs": 471.2,
+          "staticMs": 299.8,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAvailability"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 756,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 1730,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        }
+      ]
+    },
+    "Submit": {
+      "elapsedMs": 292.8,
+      "readyMs": 244.4,
+      "staticMs": 29.9,
+      "gasHttpCount": 2,
+      "actions": [
+        "submitRequest",
+        "getAvailabilityRevision"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 1,
+      "sheetCells": 1161,
+      "lockAcquisitions": 1,
+      "lockWaitMs": 0,
+      "payloadBytes": 697,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 21,
+      "samples": [
+        {
+          "elapsedMs": 302.4,
+          "readyMs": 249.9,
+          "staticMs": 45.1,
+          "gasHttpCount": 2,
+          "actions": [
+            "submitRequest",
+            "getAvailabilityRevision"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 1,
+          "sheetCells": 1156,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 697,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 21
+        },
+        {
+          "elapsedMs": 292.8,
+          "readyMs": 244.4,
+          "staticMs": 29.9,
+          "gasHttpCount": 2,
+          "actions": [
+            "submitRequest",
+            "getAvailabilityRevision"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 1,
+          "sheetCells": 1161,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 697,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 21
+        },
+        {
+          "elapsedMs": 286.5,
+          "readyMs": 229,
+          "staticMs": 29.6,
+          "gasHttpCount": 2,
+          "actions": [
+            "submitRequest",
+            "getAvailabilityRevision"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 1,
+          "sheetCells": 1166,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 697,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 21
+        }
+      ]
+    },
+    "Provider login": {
+      "elapsedMs": 268.5,
+      "readyMs": 267.7,
+      "staticMs": 33.1,
+      "gasHttpCount": 1,
+      "actions": [
+        "authenticateProvider"
+      ],
+      "sheetBatchGetCount": 2,
+      "sheetRangeReads": 0,
+      "sheetCells": 3627,
+      "lockAcquisitions": 1,
+      "lockWaitMs": 0,
+      "payloadBytes": 100395,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 20,
+      "samples": [
+        {
+          "elapsedMs": 260.8,
+          "readyMs": 259.7,
+          "staticMs": 33.1,
+          "gasHttpCount": 1,
+          "actions": [
+            "authenticateProvider"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 0,
+          "sheetCells": 3627,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 100395,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        },
+        {
+          "elapsedMs": 272.6,
+          "readyMs": 271.6,
+          "staticMs": 33.1,
+          "gasHttpCount": 1,
+          "actions": [
+            "authenticateProvider"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 0,
+          "sheetCells": 3627,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 100395,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        },
+        {
+          "elapsedMs": 268.5,
+          "readyMs": 267.7,
+          "staticMs": 34.9,
+          "gasHttpCount": 1,
+          "actions": [
+            "authenticateProvider"
+          ],
+          "sheetBatchGetCount": 2,
+          "sheetRangeReads": 0,
+          "sheetCells": 3627,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 100395,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        }
+      ]
+    },
+    "Admin login": {
+      "elapsedMs": 324.6,
+      "readyMs": 323.6,
+      "staticMs": 39.3,
+      "gasHttpCount": 1,
+      "actions": [
+        "authenticateAdmin"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 6259,
+      "lockAcquisitions": 2,
+      "lockWaitMs": 0,
+      "payloadBytes": 164497,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 19,
+      "samples": [
+        {
+          "elapsedMs": 324.6,
+          "readyMs": 323.6,
+          "staticMs": 56.6,
+          "gasHttpCount": 1,
+          "actions": [
+            "authenticateAdmin"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 2,
+          "lockWaitMs": 0,
+          "payloadBytes": 164497,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 305,
+          "readyMs": 304.1,
+          "staticMs": 34.5,
+          "gasHttpCount": 1,
+          "actions": [
+            "authenticateAdmin"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 2,
+          "lockWaitMs": 0,
+          "payloadBytes": 164497,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        },
+        {
+          "elapsedMs": 324.9,
+          "readyMs": 323.9,
+          "staticMs": 39.3,
+          "gasHttpCount": 1,
+          "actions": [
+            "authenticateAdmin"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 2,
+          "lockWaitMs": 0,
+          "payloadBytes": 164497,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 19
+        }
+      ]
+    },
+    "Provider refresh": {
+      "elapsedMs": 176.8,
+      "readyMs": 175.5,
+      "staticMs": 154.2,
+      "gasHttpCount": 1,
+      "actions": [
+        "getProviderRequests"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 3607,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 100158,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 21,
+      "samples": [
+        {
+          "elapsedMs": 161.6,
+          "readyMs": 160.6,
+          "staticMs": 147.4,
+          "gasHttpCount": 1,
+          "actions": [
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 3607,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 100158,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 21
+        },
+        {
+          "elapsedMs": 176.8,
+          "readyMs": 175.5,
+          "staticMs": 154.2,
+          "gasHttpCount": 1,
+          "actions": [
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 3607,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 100158,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 21
+        },
+        {
+          "elapsedMs": 178.3,
+          "readyMs": 177,
+          "staticMs": 156.7,
+          "gasHttpCount": 1,
+          "actions": [
+            "getProviderRequests"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 3607,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 100158,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 21
+        }
+      ]
+    },
+    "Admin overview": {
+      "elapsedMs": 184.7,
+      "readyMs": 183.7,
+      "staticMs": 183.7,
+      "gasHttpCount": 1,
+      "actions": [
+        "getAdminOverview"
+      ],
+      "sheetBatchGetCount": 1,
+      "sheetRangeReads": 0,
+      "sheetCells": 6259,
+      "lockAcquisitions": 1,
+      "lockWaitMs": 0,
+      "payloadBytes": 164289,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/app.js",
+        "/assets/js/bootstrap.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js",
+        "/assets/js/gas-api.js"
+      ],
+      "assetCount": 20,
+      "samples": [
+        {
+          "elapsedMs": 176.1,
+          "readyMs": 174.9,
+          "staticMs": 174.9,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 164289,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        },
+        {
+          "elapsedMs": 184.7,
+          "readyMs": 183.7,
+          "staticMs": 183.7,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 164289,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        },
+        {
+          "elapsedMs": 190.2,
+          "readyMs": 189,
+          "staticMs": 189,
+          "gasHttpCount": 1,
+          "actions": [
+            "getAdminOverview"
+          ],
+          "sheetBatchGetCount": 1,
+          "sheetRangeReads": 0,
+          "sheetCells": 6259,
+          "lockAcquisitions": 1,
+          "lockWaitMs": 0,
+          "payloadBytes": 164289,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/app.js",
+            "/assets/js/bootstrap.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js",
+            "/assets/js/gas-api.js"
+          ],
+          "assetCount": 20
+        }
+      ]
+    }
+  },
+  "noPreloadExperiment": {
+    "Home": {
+      "elapsedMs": 305.5,
+      "readyMs": 299,
+      "staticMs": 237.9,
+      "gasHttpCount": 0,
+      "actions": [],
+      "sheetBatchGetCount": 0,
+      "sheetRangeReads": 0,
+      "sheetCells": 0,
+      "lockAcquisitions": 0,
+      "lockWaitMs": 0,
+      "payloadBytes": 0,
+      "initialPdfRequests": 0,
+      "jsAssets": [
+        "/assets/js/bootstrap.js",
+        "/assets/js/app.js",
+        "/assets/js/performance.js",
+        "/assets/js/api.js",
+        "/assets/js/config.js",
+        "/assets/js/views.js",
+        "/assets/js/runtime-config.js",
+        "/assets/js/session-store.js",
+        "/assets/js/build-version.js",
+        "/assets/js/logos.js",
+        "/assets/js/brochures.js"
+      ],
+      "assetCount": 17,
+      "samples": [
+        {
+          "elapsedMs": 305.5,
+          "readyMs": 299,
+          "staticMs": 237.9,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js"
+          ],
+          "assetCount": 17
+        },
+        {
+          "elapsedMs": 283.7,
+          "readyMs": 276.6,
+          "staticMs": 212.6,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js"
+          ],
+          "assetCount": 17
+        },
+        {
+          "elapsedMs": 309.4,
+          "readyMs": 301.3,
+          "staticMs": 240.4,
+          "gasHttpCount": 0,
+          "actions": [],
+          "sheetBatchGetCount": 0,
+          "sheetRangeReads": 0,
+          "sheetCells": 0,
+          "lockAcquisitions": 0,
+          "lockWaitMs": 0,
+          "payloadBytes": 0,
+          "initialPdfRequests": 0,
+          "jsAssets": [
+            "/assets/js/bootstrap.js",
+            "/assets/js/app.js",
+            "/assets/js/performance.js",
+            "/assets/js/api.js",
+            "/assets/js/config.js",
+            "/assets/js/views.js",
+            "/assets/js/runtime-config.js",
+            "/assets/js/session-store.js",
+            "/assets/js/build-version.js",
+            "/assets/js/logos.js",
+            "/assets/js/brochures.js"
+          ],
+          "assetCount": 17
+        }
+      ]
+    }
+  }
+}

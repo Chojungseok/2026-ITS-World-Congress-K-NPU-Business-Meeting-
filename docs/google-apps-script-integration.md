@@ -1,6 +1,10 @@
 # 기존 API 계약을 유지한 GAS 전환
 
-현재 V3 변경·운영 DB 적용은 [V3 보고서](business-meeting-v3.md)를 먼저 참고하세요. 아래는 최초 GAS 전환부터 이어온 계약 설명이며 V3에서는 정원·시간표·디자인을 갱신했습니다.
+**현재 -10분/공개 현황판 적용은 [최신 보고서](schedule-public-board.md)를 참고하세요.** 기존 Sheet schema/API_VERSION/인증/쓰기 잠금을 유지합니다. 공개 board는 새로운 허용 목록 집계 API이며 개인정보를 반환하지 않습니다.
+
+**현재 성능·통신 변경과 운영 적용은 [V3.1 보고서](communication-reliability.md)를 먼저 참고하세요.** 모든 요청 apiVersion/응답 meta.apiVersion을 검증합니다. API 버전이 없는 구배포는 허용하지 않으므로 Google 재배포가 frontend push보다 먼저입니다. 아래 이전 응답 형태의 호환 설명은 같은 API 버전의 envelope에서만 적용합니다.
+
+이전 V3 변경·운영 DB 적용은 [V3 보고서](business-meeting-v3.md)를 먼저 참고하세요. 아래는 최초 GAS 전환부터 이어온 계약 설명이며 V3에서는 정원·시간표·디자인을 갱신했습니다.
 
 ## 분석 결과와 유지한 설계
 
@@ -32,8 +36,8 @@
 | findRequestIds | {itsCompany,contactName,phone,email} | [{id,createdAt,providerName,time,status}] | 네 항목 본인 확인 POST, 15분 10회 제한 |
 | findRequest | {id,email} | 해당 신청 객체 | 본인정보 확인 POST |
 | cancelRequest | {id,email} | 취소된 신청 객체 | 본인정보 확인 POST |
-| authenticateProvider | {providerId,approvalCode} | token 문자열 | 기업 인증 POST |
-| authenticateAdmin | {id,password} | token 문자열 | 관리자 인증 POST |
+| authenticateProvider | {providerId,approvalCode,includeInitialData?} | token 문자열 또는 {token,providerId,snapshot?,initialDataError?} | 기업 인증 POST |
+| authenticateAdmin | {id,password,includeOverview?} | token 문자열 또는 {token,overview?,initialDataError?} | 관리자 인증 POST |
 | logout | token 문자열 | null | 유효 세션 POST |
 | getProviderRequests | token 문자열 | 본인 기업 신청 배열 | NPU POST |
 | getProviderSnapshot | token 문자열 | {requests,revision} | NPU POST, 같은 getProviderRequests 서버 동작 |
@@ -42,15 +46,18 @@
 | getAvailabilityRevision | providerId 문자열 | {revision} | 공개 GET, Sheet I/O 없음 |
 | decideRequest | {token,id,decision,rejectionReason?} | 변경된 신청 객체 | NPU POST |
 | updateProviderCapacity | {token,time,capacity} | {providerId,time,capacity} | NPU POST |
+| shrinkSchedule | {token,expectedLastTime} | {removedTime,time,providerIds} | 관리자 POST, 마지막 슬롯만 비활성화/공통 잠금 |
+| getPublicBoard | 없음 | {times,providers:[{id,name,english,slots:[{time,capacity,confirmed,remaining,active}]}],revision} | 공개 GET, 집계용 3열 batchGet 한 번 |
+| getPublicBoardRevision | 없음 | {revision} | 공개 GET, Sheet I/O=0 |
 | extendSchedule | {token,expectedLastTime} | {previousLastTime,time,providerIds,capacity} | 관리자 POST, 공통 ScriptLock/atomic batch |
 | getAdminRequests | token 문자열 | 전체 신청 배열 | 관리자 POST |
 | getAdminOverview | token 문자열 | {requests,history,providers,config,revision} | 관리자 POST |
 
 decision은 매칭확정 또는 매칭거절입니다. 거절에는 trim 후 1~500자의 rejectionReason이 필수이며, 승인은 해당 값을 무시하고 빈 문자열을 저장합니다. 기존 거절 사유가 없으면 정상적인 빈 값으로 취급합니다. status는 승인대기/매칭확정/매칭거절/신청취소입니다. resetDemo는 운영 구현과 서버에 없습니다.
 
-HTTP 본문은 메서드 인자와 action을 같은 객체에 둡니다. 예: `{action:'getProviderRequests',token:...}`. getConfig/getAvailability/getAvailabilityRevision 외 GET 호출은 거부합니다. 서버에는 client가 지정한 함수명을 실행하는 경로가 없습니다.
+HTTP 본문은 메서드 인자와 action을 같은 객체에 둡니다. 예: `{action:'getProviderRequests',apiVersion:'2026-10-v3.1',token:...}`. getConfig/getAvailability/getAvailabilityRevision/getPublicBoard/getPublicBoardRevision 외 GET 호출은 거부합니다. 서버에는 client가 지정한 함수명을 실행하는 경로가 없습니다.
 
-성능 개선 서버는 getProviderRequests의 POST 본문에 선택적으로 `includeConfig:true`가 있으면 `{requests,config,revision}`을 반환합니다. 없으면 기존 배열을 반환합니다. gas-api.js는 이 응답을 배열로 풀어서 UI 계약을 유지하고 공개 config만 메모리에 보관합니다. 기존 배포가 배열을 반환하는 경우도 지원합니다. getProviderSnapshot은 같은 서버 동작의 revision을 함께 반환하는 선택적 어댑터 메서드입니다. getProviderRequests의 기존 배열 계약은 유지합니다. getAdminOverview에는 config/revision을 추가했으며 기존 필드도 유지합니다. revision 필드가 없는 이전 서버는 30초 전체 갱신으로 호환됩니다.
+성능 개선 서버는 getProviderRequests의 POST 본문에 선택적으로 `includeConfig:true`가 있으면 `{requests,config,revision}`을 반환합니다. 없으면 기존 배열을 반환합니다. gas-api.js는 이 응답을 배열로 풀어서 UI 계약을 유지하고 공개 config만 메모리에 보관합니다. 같은 API_VERSION의 envelope에서 배열을 반환하는 경우도 지원합니다. getProviderSnapshot은 같은 서버 동작의 revision을 함께 반환하는 선택적 어댑터 메서드입니다. getProviderRequests의 기존 배열 계약은 유지합니다. getAdminOverview에는 config/revision을 추가했으며 기존 필드도 유지합니다. 같은 API_VERSION이며 revision 필드가 없는 응답은 30초 전체 갱신으로 호환됩니다.
 
 신청 객체는 기존 id/createdAt/itsCompany/contactName/phone/email/providerId/time/attendees/details/status/privacyConsent/privacyConsentedAt/privacyNoticeVersion을 유지하고 providerName/updatedAt/rejectionReason을 추가합니다. 시트 내부 행 번호는 반환하지 않습니다.
 
@@ -85,7 +92,7 @@ history는 기존 action/occurredAt/actor/requestId/itsCompany/providerId/time/f
 
 ## 전송과 갱신
 
-GET에는 공개 action/providerId/includeConfig만 둡니다. POST는 text/plain;charset=utf-8 JSON, credentials omit, mode cors, redirect follow입니다. no-cors/JSONP를 사용하지 않습니다. JSON 응답이나 네트워크 확인 없이 성공 처리하지 않습니다. 쓰기 자동 재시도는 없습니다.
+GET에는 공개 action/apiVersion/providerId/includeConfig만 둡니다. POST는 text/plain;charset=utf-8 JSON, credentials omit, mode cors, redirect follow입니다. no-cors/JSONP를 사용하지 않습니다. JSON 응답이나 네트워크 확인 없이 성공 처리하지 않습니다. 쓰기 자동 재시도는 없습니다.
 
 NPU/matching은 5초마다 getProviderRevision, 관리자는 10초마다 getAdminRevision을 호출합니다. 동일 버전이면 목록·설정을 다시 읽지 않습니다. 변경된 경우만 기존 부분 갱신으로 목록/overview를 읽습니다. 최초 진입과 수동 새로고침은 바로 전체 데이터를 읽습니다. home/빈 lookup/로그인 전/숨긴 탭은 주기 요청이 없습니다. visible 복귀는 즉시 버전을 확인하며 진행 중 요청이 있으면 중복 없이 끝난 직후 확인합니다. apply는 5초 availability revision 확인으로 변경 시 공개 snapshot을 갱신합니다. 조회를 마친 lookup은 기존 30초 갱신을 유지합니다.
 
