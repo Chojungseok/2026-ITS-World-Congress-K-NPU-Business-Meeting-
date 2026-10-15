@@ -61,7 +61,7 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     try { return await call('updateProviderCapacity', input); }
     finally { invalidateConfig(); } // Also discard after a possibly committed/lost response.
   }
-  const retryableReads = new Set(['getConfig','getAvailability','getAvailabilityRevision','getProviderRevision','getAdminRevision','getProviderRequests','getAdminRequests','getAdminOverview','getPublicBoard','getPublicBoardRevision']);
+  const retryableReads = new Set(['getConfig','getAvailability','getAvailabilityRevision','getProviderRevision','getAdminRevision','getProviderRequests','getAdminRequests','getAdminOverview','getPublicBoard','getPublicBoardRevision','getMaterialStatistics']);
   const writes = new Set(['submitRequest','cancelRequest','decideRequest','updateProviderCapacity','extendSchedule','shrinkSchedule']);
   async function call(action, payload = {}, method = 'POST') {
     if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url || ''))
@@ -163,6 +163,8 @@ export function createGasApi({ url, fetchImpl = globalThis.fetch, timeoutMs = 45
     getAvailabilityRevision: providerId => revision('getAvailabilityRevision', { providerId }, 'GET'),
     decideRequest: input => call('decideRequest', input),
     getAdminRequests: token => call('getAdminRequests', { token }),
-    getAdminOverview: adminOverview
+    getAdminOverview: adminOverview,
+    logMaterialView: input => call('logMaterialView', {materialId:input.materialId,sessionId:input.sessionId,clickId:input.clickId}),
+    getMaterialStatistics: ({token,...filters}) => call('getMaterialStatistics', {token,...filters})
   });
 }

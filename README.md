@@ -1,5 +1,7 @@
 # K-NPU Connect
 
+**V4 로컬 개발:** 행사 홈·발표자료실·자료 관심도 기능과 운영 반영 절차는 [V4 보고서](docs/material-library-v4.md)를 참고하세요. 실제 발표자료는 준비 중이며 이번 작업은 Google DB 변경/배포/GitHub push를 수행하지 않습니다.
+
 강릉 K-NPU 전환 밋업의 ITS 기업 ↔ NPU 기업 1:1 비즈매칭 시스템입니다. 기존 HTML/CSS/JavaScript 기능과 경로를 유지하고, 로컬 mock과 Google Apps Script + 비공개 Google Sheets 운영 백엔드를 선택할 수 있게 구성했습니다.
 
 현재 로컬 V3/V3.1을 유지하면서 **관리자 마지막 연장 취소(-10분)와 공개 현황판(#board)**을 구현했습니다. 기존 신청/인증/정원/시간 연장/통신·revision 구조는 유지합니다. [22개 완료 항목·화면 검사·Google 적용 순서](docs/schedule-public-board.md)를 먼저 읽으세요. Google DB 변경·재배포나 GitHub push는 수행하지 않았습니다. 이전 [V3.1 성능 보고서](docs/communication-reliability.md)도 보존했습니다.
@@ -30,7 +32,7 @@ assets/js/runtime-config.js 한 곳에서 공개 GAS URL과 backend를 관리합
 
 운영 URL이 비어 있으면 운영 설정 오류를 표시합니다. 운영 모드에서 데모 DB로 자동 대체하지 않습니다. 로컬 데모 데이터와 운영 DB는 서로 복사하거나 혼합하지 않습니다.
 
-PDF를 Public Repository에 추가하면 GitHub/Pages에서 공개 파일이 됩니다. 공개 승인을 받은 PDF만 assets/brochures에 원본 그대로 복사하고 assets/js/brochures.js의 해당 available을 true로 바꾸세요. 제공된 원본 PDF 4개는 파일명만 정리하여 배치했고 자료 보기 링크를 활성화했습니다.
+PDF를 Public Repository에 추가하면 GitHub/Pages에서 공개 파일이 됩니다. 공개 승인을 받은 PDF만 assets/brochures에 원본 그대로 복사하고 assets/js/material-catalog.js에서 해당 filePath/available/publicApproved를 설정하세요. 자료 등록 및 서버 검증 목록 동기화는 [V4 안내](docs/material-library-v4.md)를 따릅니다. 제공된 원본 PDF 4개는 파일명만 정리하여 배치했고 자료 보기 링크를 활성화했습니다.
 
 실제 개인정보는 Google 설정과 개인정보 안내 확정 전 로컬 테스트에 사용하지 마세요. 자동 확인 메일은 발송하지 않습니다.
 
@@ -38,7 +40,9 @@ PDF를 Public Repository에 추가하면 GitHub/Pages에서 공개 파일이 됩
 
 | 경로 | 기능 |
 | --- | --- |
-| #home | 소개, ITS/NPU 선택, 신청 현황 확인, 관리자 로그인 |
+| #home | 행사 통합 소개, 비즈매칭/자료실 이동, 하단 운영자 로그인 |
+| #business | 기존 ITS/NPU 기업 선택, 신청 현황 확인 |
+| #materials | ITS·NPU 발표자료/브로셔, 준비 중 상태, 상담 신청 연결 |
 | #apply | 상담 신청, 시간별 잔여 자리, 개인정보 동의 |
 | #lookup | 신청ID + 이메일 조회, 거절 사유, 승인대기/매칭확정 취소 |
 | #find-id | 기업명·담당자명·연락처·이메일 일치 시 신청ID 찾기 |
@@ -46,7 +50,7 @@ PDF를 Public Repository에 추가하면 GitHub/Pages에서 공개 파일이 됩
 | #npu | 기업 코드 로그인, 본인 기업 신청 승인/거절, 시간별 정원 |
 | #matching | 로그인한 NPU의 확정 시간표·상세 |
 | #board | 익명 집계 전용 현황판, 10초 revision 확인, CI·정원·확정·잔여·마감 |
-| #admin | 관리자 인증, 5종 통계, 진행 현황 표/팝업, 복합 필터, 전체 활동 로그 |
+| #admin | 관리자 인증, 5종 통계, 진행 현황 표/팝업, 복합 필터, 전체 활동 로그, 자료 관심도 통계 |
 
 기본 시간은 15:50–16:30의 10분 단위 4개 구간이며 관리자가 +10분씩 연장하거나 마지막 연장 구간을 -10분 취소할 수 있습니다. 기본 4구간 아래로 줄이거나 진행 중인 신청이 있는 시간을 취소할 수 없습니다. 모든 기업의 기본 정원은 2이며 각 시간대별 0~2로 변경할 수 있습니다. 이미 확정한 건수 아래로 줄일 수 없습니다. 기존 DB의 active 정원은 migrateBusinessMeetingV3로 안전하게 변경하고 과거 비활성 정원/신청/이력은 유지합니다.
 
@@ -78,7 +82,11 @@ assets/
   css/board.css            # 공개 현황판에서만 로딩하는 스크린 스타일
   css/styles.css
   js/bootstrap.js
-  js/brochures.js          # 정적 PDF 경로와 게시 여부
+  js/brochures.js          # 기존 브로셔 호환 facade
+  js/material-catalog.js   # 자료 등록정보 단일 원본
+  js/material-views.js     # 행사 홈·자료실·관심도 통계
+  materials/               # 실제 발표자료 확보 후 등록 (현재 PDF 없음)
+  css/materials.css
   js/logos.js              # 공식 CI 로컬 경로·alt·크기
   js/config.js             # 화면 기본값 + 서버 공개 설정 반영
   js/runtime-config.js     # backend, GAS URL, 갱신 주기
@@ -140,7 +148,7 @@ docs/performance-optimization.md
 
 ## 설정과 배포
 
-이미 운영 중인 경우 [현재 기능 적용 순서](docs/schedule-public-board.md#17-apps-script-반영-파일)에 따릅니다. V3.1이 Google에 반영돼 있으면 **Code/Schedule/Revision/Diagnostics 교체 + PublicBoard 추가 → 기존 Web App 새 버전 → 로컬 GAS 테스트 → GitHub push**입니다. 이전 V3.1 미반영 시 Config/Database/Auth도 함께 복사합니다. 기존 DB/인증 속성과 /exec를 유지하고 setup/auth/migration을 실행하지 않습니다. 아래는 신규 환경 설정 순서입니다.
+V4는 [V4 적용 순서](docs/material-library-v4.md)를 먼저 따릅니다. 자료열람이력 전용 migration과 목록 동기화가 추가되었습니다. 다음은 이전 현황판 단계의 적용 안내입니다. 이미 운영 중인 경우 [현재 기능 적용 순서](docs/schedule-public-board.md#17-apps-script-반영-파일)에 따릅니다. V3.1이 Google에 반영돼 있으면 **Code/Schedule/Revision/Diagnostics 교체 + PublicBoard 추가 → 기존 Web App 새 버전 → 로컬 GAS 테스트 → GitHub push**입니다. 이전 V3.1 미반영 시 Config/Database/Auth도 함께 복사합니다. 기존 DB/인증 속성과 /exec를 유지하고 setup/auth/migration을 실행하지 않습니다. 아래는 신규 환경 설정 순서입니다.
 
 1. [Google 설정 안내](apps-script/README.md)에 따라 Apps Script 파일/매니페스트를 복사합니다.
 2. setupSystem 실행·Google 권한 승인 → 생성된 DB 공유가 제한됨인지 확인합니다.
@@ -159,6 +167,6 @@ docs/performance-optimization.md
 
 시간 연장/정원 변경/승인/취소/신청은 서버 ScriptLock으로 직렬화하고 상태와 처리이력을 하나의 Sheets batchUpdate로 저장합니다. 문자열 셀은 수식으로 해석되지 않게 기록합니다.
 
-기존 129개를 포함한 145개 Node 테스트와 Playwright의 분리된 모바일/PC 브라우저 흐름, 화면별 호출 수·비동기 로딩·갱신 경합, revision 무변경/변경·팝업·탭 복귀 검사를 확인했습니다. 브라우저 검사는 모형 Google 서비스를 사용하며 실제 Google CORS/권한/할당량/실기기 동시성 시험을 대신하지 않습니다.
+기존 145개를 포함한 157개 Node 테스트와 Playwright의 분리된 모바일/PC 브라우저 흐름, 화면별 호출 수·비동기 로딩·갱신 경합, revision 무변경/변경·팝업·탭 복귀 검사를 확인했습니다. 브라우저 검사는 모형 Google 서비스를 사용하며 실제 Google CORS/권한/할당량/실기기 동시성 시험을 대신하지 않습니다.
 
 [변경 감지·배포·실기기 검증](docs/lightweight-change-detection.md), [이전 성능 개선](docs/performance-optimization.md), [API 계약·구현 설계](docs/google-apps-script-integration.md)와 [실제 Google 설정·운영 전 점검](apps-script/README.md)을 참고하세요.

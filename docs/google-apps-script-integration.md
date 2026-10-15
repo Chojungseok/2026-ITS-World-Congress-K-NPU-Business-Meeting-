@@ -1,5 +1,7 @@
 # 기존 API 계약을 유지한 GAS 전환
 
+**V4 로컬 개발:** 행사 홈·발표자료실·자료 관심도 기능과 운영 반영 절차는 [V4 보고서](material-library-v4.md)를 참고하세요. 실제 발표자료는 준비 중이며 이번 작업은 Google DB 변경/배포/GitHub push를 수행하지 않습니다.
+
 **현재 -10분/공개 현황판 적용은 [최신 보고서](schedule-public-board.md)를 참고하세요.** 기존 Sheet schema/API_VERSION/인증/쓰기 잠금을 유지합니다. 공개 board는 새로운 허용 목록 집계 API이며 개인정보를 반환하지 않습니다.
 
 **현재 성능·통신 변경과 운영 적용은 [V3.1 보고서](communication-reliability.md)를 먼저 참고하세요.** 모든 요청 apiVersion/응답 meta.apiVersion을 검증합니다. API 버전이 없는 구배포는 허용하지 않으므로 Google 재배포가 frontend push보다 먼저입니다. 아래 이전 응답 형태의 호환 설명은 같은 API 버전의 envelope에서만 적용합니다.
@@ -52,6 +54,8 @@
 | extendSchedule | {token,expectedLastTime} | {previousLastTime,time,providerIds,capacity} | 관리자 POST, 공통 ScriptLock/atomic batch |
 | getAdminRequests | token 문자열 | 전체 신청 배열 | 관리자 POST |
 | getAdminOverview | token 문자열 | {requests,history,providers,config,revision} | 관리자 POST |
+| logMaterialView | {materialId,sessionId,clickId} | {recorded,duplicate} | 공개 POST, 서버 등록 목록 검증 |
+| getMaterialStatistics | {token,from?,to?,companyId?,companyType?,materialType?,offset?} | 자료/기업/유형/일자별 집계와 식별자 없는 기록 100건 | 관리자 POST |
 
 decision은 매칭확정 또는 매칭거절입니다. 거절에는 trim 후 1~500자의 rejectionReason이 필수이며, 승인은 해당 값을 무시하고 빈 문자열을 저장합니다. 기존 거절 사유가 없으면 정상적인 빈 값으로 취급합니다. status는 승인대기/매칭확정/매칭거절/신청취소입니다. resetDemo는 운영 구현과 서버에 없습니다.
 
@@ -114,7 +118,7 @@ NPU/matching은 5초마다 getProviderRevision, 관리자는 10초마다 getAdmi
 
 로컬 테스트는 실제 Google 서버의 배포 권한, CORS, API 할당량을 검증하지 않습니다. [설정·실기기 검증 안내](../apps-script/README.md)를 따라 사용자 계정에서 완료해야 합니다.
 
-V2는 새 15:50~16:30 운영 시간만 공개 config/availability로 반환하고 과거 신청/이력의 시간은 보존합니다. 신청 ID 찾기는 revision을 변경하지 않으며 입력 정보를 지속 저장하지 않습니다. 거절 사유는 Q열에 안전한 stringValue로 기록하고 기존 provider/admin revision 발행을 그대로 사용합니다. PDF는 정적 링크이며 GAS/Sheets를 호출하지 않습니다.
+V2는 새 15:50~16:30 운영 시간만 공개 config/availability로 반환하고 과거 신청/이력의 시간은 보존합니다. 신청 ID 찾기는 revision을 변경하지 않으며 입력 정보를 지속 저장하지 않습니다. 거절 사유는 Q열에 안전한 stringValue로 기록하고 기존 provider/admin revision 발행을 그대로 사용합니다. V2 당시 PDF는 정적 링크만 사용했습니다. V4에서는 파일 자체는 정적 링크를 유지하고 버튼 클릭 시 별도 자료열람이력 API를 호출합니다. 초기 PDF/통계 요청은 없습니다.
 
 ## V3 시간 연장과 정원 이전
 

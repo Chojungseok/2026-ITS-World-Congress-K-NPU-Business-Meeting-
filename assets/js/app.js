@@ -1,4 +1,6 @@
 import { BUILD_VERSION } from './build-version.js';
+import * as materialView from './material-views.js';
+import { materialById, materialAvailable, materialSessionId } from './materials.js';
 import { clockNow, recordTiming } from './performance.js';
 import { api } from './api.js';
 import { STATUS, STORAGE_KEY, TIMES, BASE_TIMES, providerById, applyPublicConfig, PRIVACY_NOTICE } from './config.js';
@@ -56,7 +58,7 @@ const pollingConfig = RUNTIME_CONFIG.revisionPolling || {
   providerMs: RUNTIME_CONFIG.refreshIntervalMs, adminMs: RUNTIME_CONFIG.refreshIntervalMs,
   retryMs: RUNTIME_CONFIG.refreshIntervalMs
 };
-const titles = { board:'비즈매칭 공개 현황판', home: '비즈매칭 소개', apply: '상담 신청', lookup: '신청 현황 확인', 'find-id': '신청 ID 찾기', brochures: 'NPU 기업 소개자료', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
+const titles = { board:'비즈매칭 공개 현황판', home: '강릉 K-NPU 전환 밋업', business: '비즈매칭 소개', materials: '발표·홍보자료실', apply: '상담 신청', lookup: '신청 현황 확인', 'find-id': '신청 ID 찾기', brochures: 'NPU 기업 소개자료', npu: 'NPU 승인 관리', matching: '매칭 현황', admin: '운영 대시보드' };
 
 function toast(message, isError = false) {
   const element = $('#toast');
@@ -454,6 +456,8 @@ function renderAdminSlot() {
 }
 
 main.addEventListener('click', event => {
+  const jump=event.target.closest('[data-material-jump]');
+  if(jump){event.preventDefault();document.getElementById(jump.dataset.materialJump)?.scrollIntoView({behavior:'smooth'});return;}
   const slot = event.target.closest('[data-slot-detail]');
   if (slot && adminToken && route === 'admin') {
     activeAdminSlot = { providerId: slot.dataset.provider, time: slot.dataset.time, requestId: null };
@@ -504,7 +508,8 @@ async function renderRoute(focus = true, initial = {}) {
   loadedRevision = null; legacyRevisionServer = false; revisionRecovery = false; pendingRevisionSince = null; pollingError = '';
   const newRoute = location.hash.replace('#', '');
   route = titles[newRoute] ? newRoute : 'home';
-  document.body.classList.toggle('home-screen', route === 'home');
+  document.body.classList.toggle('home-screen', ['home','business'].includes(route));
+  document.body.classList.toggle('portal-route', route==='materials');
   document.body.classList.toggle('board-screen',route==='board');
   if(route!=='board')main.classList.remove('board-dense-view');
   $('#sidebar').hidden=route==='board';$('.topbar').hidden=route==='board';$('.workspace>.footer').hidden=route==='board';
@@ -512,7 +517,7 @@ async function renderRoute(focus = true, initial = {}) {
     currentRows=[];currentHistory=[];currentProviders=[];currentBoard=null;
     if(!document.querySelector('[data-board-style]')){const css=document.createElement('link');css.rel='stylesheet';css.dataset.boardStyle='';css.href=new URL('./assets/css/board.css?v='+BUILD_VERSION,document.baseURI).href;document.head.append(css);}
   }
-  const itsScreen = ['apply', 'lookup', 'find-id', 'brochures'].includes(route);
+  const itsScreen = ['home','business','materials','apply', 'lookup', 'find-id', 'brochures'].includes(route);
   const providerScreen = route === 'npu' || route === 'matching';
   $('#sidebar .management-label').hidden = itsScreen;
   $('#sidebar .management-label').textContent = providerScreen ? 'NPU 파트너' : '파트너 & 운영';
@@ -540,7 +545,9 @@ async function renderRoute(focus = true, initial = {}) {
   $('#menu-toggle').setAttribute('aria-label', '메뉴 열기');
   main.dataset.loading = 'true';
   try {
-    if (route === 'home') main.innerHTML = view.homePage();
+    if (route === 'home') main.innerHTML = materialView.eventHome();
+    if (route === 'business') main.innerHTML = view.homePage();
+    if (route === 'materials') main.innerHTML = materialView.materialsPage();
     if(route==='board'){main.innerHTML=view.publicBoardPage();bindBoard();await loadBoardView(version);}
     if (route === 'brochures') main.innerHTML = view.brochuresPage();
     if (route === 'find-id') { lookupRow = null; main.innerHTML = view.findIdsPage(); bindFindIds(); }
@@ -671,7 +678,7 @@ async function loadAdminView(version, partial, initial) {
   if (partial && unchanged) return false;
   const restoreViewport = preserveViewport();
   if (!partial) {
-    main.innerHTML = view.adminPage(currentRows, currentProviders, currentHistory); bindAdmin();
+    main.innerHTML = view.adminPage(currentRows, currentProviders, currentHistory) + materialView.materialStatisticsPanel(); bindAdmin(); bindMaterialStatistics();
   } else {
     const template = document.createElement('template');
     template.innerHTML = view.adminPage(currentRows, currentProviders, currentHistory);
@@ -806,7 +813,7 @@ $('#menu-toggle').onclick = () => {
 };
 if (api.mode === 'mock') $('#reset-demo').onclick = () => confirmAction({
   title: '데모 데이터를 초기화할까요?',
-  description: '이 브라우저에서 입력한 모든 신청과 처리 내역을 지우고 최초 예시 데이터로 되돌립니다.',
+  description: '이 브라우저의 신청·처리 내역과 자료 열람 기록을 지우고 최초 예시 데이터로 되돌립니다.',
   label: '초기화', danger: true,
   action: async () => {
     await api.resetDemo();
@@ -893,4 +900,39 @@ async function loadBoardView(version) {
   currentBoard=snapshot;acceptRevision(snapshot);
   if(changed)$('#public-board-content').innerHTML=view.publicBoardContent(snapshot);
   boardStatus();return changed;
+}
+
+// Open the selected static PDF immediately. Logging failure never blocks navigation.
+// No logging on hover, card render, disabled resources or non-PDF navigation.
+function trackMaterialClick(event) {
+  if(event.type==='auxclick' && event.button!==1 || event.type==='click' && event.button!==0)return;
+  const link=event.target.closest('[data-material-id]');
+  if(!link || event.defaultPrevented)return;
+  const material=materialById(link.dataset.materialId);
+  if(!materialAvailable(material)){event.preventDefault();return;}
+  api.logMaterialView({materialId:material.materialId,sessionId:materialSessionId(),clickId:crypto.randomUUID()})
+    .catch(()=>toast('자료는 새 탭에서 열립니다. 열람 기록은 저장하지 못했습니다.',true));
+}
+main.addEventListener('click',trackMaterialClick);
+main.addEventListener('auxclick',trackMaterialClick);
+let materialStatsSequence=0,materialStatsFilters={};
+function bindMaterialStatistics() {
+  const form=$('#material-stats-filters');
+  if(!form)return;
+  const load=button=>busy(button,()=>loadMaterialStatistics(0),'#material-stats-error');
+  $('#refresh-material-stats').onclick=event=>load(event.currentTarget);
+  form.onsubmit=event=>{event.preventDefault();load($('button[type="submit"]',form));};
+  $('#material-stats-results').onclick=event=>{
+    const button=event.target.closest('[data-material-offset]');
+    if(button)busy(button,()=>loadMaterialStatistics(Number(button.dataset.materialOffset),materialStatsFilters),'#material-stats-error');
+  };
+}
+async function loadMaterialStatistics(offset=0,filters) {
+  const version=renderVersion,token=adminToken,sequence=++materialStatsSequence;
+  const values=filters || Object.fromEntries(new FormData($('#material-stats-filters')));
+  const stats=await api.getMaterialStatistics({token,...values,offset});
+  if(version!==renderVersion || token!==adminToken || route!=='admin' || sequence!==materialStatsSequence)return;
+  materialStatsFilters={...values};
+  $('#material-stats-results').innerHTML=materialView.materialStatisticsResults(stats);
+  $('#refresh-material-stats').textContent='통계 새로고침';
 }

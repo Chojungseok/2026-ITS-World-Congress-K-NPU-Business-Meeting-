@@ -42,7 +42,7 @@ export function shell() {
     <a href="#home" class="brand" aria-label="K-NPU Connect 홈"><span class="brand-symbol">K<span>↗</span></span><span>K-NPU <strong>Connect</strong><small>BUSINESS MATCHING PLATFORM</small></span></a>
     <div class="event-label"><span class="live-dot"></span> 강릉 K-NPU 전환 밋업</div>
     <nav aria-label="주 메뉴">
-      <p class="nav-label">비즈매칭</p>
+      <a href="#home" data-route="home">${icon('grid')}<span>행사 홈</span></a><a href="#materials" data-route="materials">${icon('file')}<span>발표·홍보자료실</span></a><p class="nav-label">비즈매칭</p>
       <a href="#apply" data-route="apply">${icon('plus')}<span>상담 신청</span>${icon('chevron')}</a>
       <a href="#lookup" data-route="lookup">${icon('search')}<span>신청 현황 확인</span></a>
       <a href="#brochures" data-route="brochures">${icon('file')}<span>NPU 기업 소개자료</span></a>
@@ -268,7 +268,7 @@ export function homePage() {
     <div class="welcome-lookup"><p>이미 상담을 신청하셨나요?</p><a class="welcome-lookup-button" href="#lookup">${icon('search')} 신청 현황 확인 ${icon('arrow')}</a></div>
     ${brochureCards()}
     <p class="welcome-process"><span>상담 신청</span>${icon('chevron')}<span>NPU 기업 검토</span>${icon('chevron')}<span>1:1 매칭 확정</span></p>
-    <div class="welcome-admin"><a href="#admin" class="admin-login-link">${icon('shield')} 관리자로 로그인</a></div>
+    <a href="#home" class="text-button">← 행사 홈으로 돌아가기</a>
   </div>`;
 }
 
@@ -355,12 +355,12 @@ export function rejectionDialog(row) {
 export function brochureCards(items = BROCHURES) {
   return `<section class="brochure-section" aria-labelledby="brochure-title">
     <div class="section-heading"><div><span class="eyebrow gray">NPU PARTNERS</span><h2 id="brochure-title">NPU 기업 소개자료</h2>
-      <p>기업별 PDF 소개자료를 새 탭에서 확인하세요.</p></div></div>
+      <p>기업별 PDF 소개자료를 새 탭에서 확인하세요.</p><p class="material-click-notice">자료 보기 클릭 시 자료 정보·열람 시각·익명 방문세션을 기록합니다. 상담 신청 정보와 연결하지 않습니다.</p></div></div>
     <div class="brochure-grid">${items.map(item => {
       const provider = providerById(item.providerId);
       return `<article class="panel brochure-card">${mark(provider)}<h3>${e(item.name)}</h3><p>기업 및 기술 소개자료 · PDF</p>
         ${item.available ? '<a class="button secondary small" href="./assets/brochures/' + e(item.file) +
-          '" target="_blank" rel="noopener noreferrer">자료 보기 ' + icon('arrow') + '</a>' :
+          '" target="_blank" rel="noopener noreferrer" data-material-id="' + e(item.materialId || '') + '">자료 보기 ' + icon('arrow') + '</a>' :
           '<button class="button secondary small" type="button" disabled>자료 보기</button><span class="brochure-pending" role="status">자료 준비 중</span>'}</article>`;
     }).join('')}</div></section>`;
 }

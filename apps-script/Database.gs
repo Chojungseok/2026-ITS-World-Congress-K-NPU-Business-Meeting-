@@ -87,10 +87,11 @@ function executeBatch_(db, requests, changes) {
   if (!requests.length) return;
   var configChanged = changes.some(function(change) { return ['capacities', 'providers'].includes(change.type); });
   if (configChanged) invalidatePublicConfig_();
-  var revisionChange = prepareRevision_(changes);
+  var materialOnly = changes.every(function(change) { return change.type === 'materialViews'; });
+  var revisionChange = materialOnly ? null : prepareRevision_(changes);
   try {
     measureStage_('writeMs',function(){return Sheets.Spreadsheets.batchUpdate({ requests: requests }, db.getId());});
-    publishRevision_(revisionChange);
+    if (revisionChange) publishRevision_(revisionChange);
   } finally { if (configChanged) invalidatePublicConfig_(); }
   changes.forEach(function(change) { delete db.records[change.type]; });
 }

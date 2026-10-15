@@ -6,6 +6,7 @@ import {createHarness} from './gas-harness.mjs';
 const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});
 const h=createHarness(),base=process.env.PREVIEW_URL||'http://127.0.0.1:4173/',url='https://script.google.com/macros/s/test/exec';
+h.context.syncMaterialCatalog();
 const errors=[],report={},contexts=[];
 const good=(action,input={})=>h.value(h.call(action,input));
 async function client(hash,width=1440,{released=false,pending=false,mock=false}={}){
@@ -24,8 +25,8 @@ async function client(hash,width=1440,{released=false,pending=false,mock=false}=
   });
  }
  if(released || pending){
-  const source=await fs.readFile('assets/js/brochures.js','utf8');
-  await ctx.route('**/assets/js/brochures.js*',route=>route.fulfill({contentType:'text/javascript',body:pending ? source.replaceAll('available: true','available: false') : source.replaceAll('available: false','available: true')}));
+  const source=await fs.readFile('assets/js/material-catalog.js','utf8');
+  await ctx.route('**/assets/js/material-catalog.js*',route=>route.fulfill({contentType:'text/javascript',body:pending ? source.replaceAll('available: true','available: false') : source.replaceAll('available: false','available: true')}));
   // Only verify navigation; this explicit 404 fixture is not a fabricated brochure.
   await ctx.route('**/assets/brochures/*.pdf',route=>route.fulfill({status:404,contentType:'text/plain',body:'PDF navigation test fixture'}));
  }
@@ -97,7 +98,7 @@ try{
  assert.equal(await link.getAttribute('target'),'_blank');assert.equal(await link.getAttribute('rel'),'noopener noreferrer');
  const popupPromise=publicUi.page.waitForEvent('popup');await link.click();const popup=await popupPromise;await popup.waitForLoadState();
  assert.equal(publicUi.pdfRequests.length,1);assert.ok(publicUi.pdfRequests[0].endsWith('/assets/brochures/deepx-company-profile-2026.pdf'));
- report.pdf={initialRequests:0,clickedRequests:1,backendCallsForBrochures:0,newTab:true};
+ report.pdf={initialRequests:0,clickedRequests:1,clickLogRequests:1,newTab:true};
  const missing=await client('home',390,{pending:true});
  assert.equal(await missing.page.locator('.brochure-card button[disabled]').count(),4);assert.equal(missing.pdfRequests.length,0);
  for(const c of [mobile,npu,admin,publicUi,missing]){

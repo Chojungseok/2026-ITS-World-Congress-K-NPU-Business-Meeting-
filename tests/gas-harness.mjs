@@ -100,7 +100,7 @@ export function createHarness({ sources = {} } = {}) {
     } } },
     ContentService: { MimeType: { JSON:'application/json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) }
   });
-  for(const name of ['Config','Diagnostics','Revision','Database','Setup','Migration','MigrationV3','Schedule','PublicBoard','Auth','Services','Code'])
+  for(const name of ['Config','Diagnostics','Revision','Database','Setup','Migration','MigrationV3','Schedule','PublicBoard','Auth','Services','MaterialCatalog','MaterialStats','MigrationV4','Materials','Code'])
     vm.runInContext(sources[name] ?? fs.readFileSync(new URL('../apps-script/'+name+'.gs',import.meta.url),'utf8'),context,{filename:name+'.gs'});
   const call = (action,input={},method='POST') => JSON.parse(JSON.stringify(context.handle_(method,{apiVersion:context.KN.apiVersion,...input,action})));
   const value = result => { if(!result.ok) throw Object.assign(Error(result.error.message), {code:result.error.code}); return result.data; };

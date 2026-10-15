@@ -1,3 +1,4 @@
+import { logMockMaterialView, mockMaterialStatistics, resetMockMaterials } from './mock-materials.js';
 import { STATUS, PROVIDERS, TIMES, BASE_TIMES, applyPublicConfig, LEGACY_TIMES, PREVIOUS_TIMES, PRIVACY_NOTICE_VERSION, STORAGE_KEY, providerById } from './config.js';
 
 let queue = Promise.resolve();
@@ -193,6 +194,8 @@ async function publicBoardVersion(data) {
   return [...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 export const api = {
+  logMaterialView: logMockMaterialView,
+  async getMaterialStatistics({token,...filters}) {session(token,'admin');return mockMaterialStatistics(filters);},
   mode: 'mock',
   async getConfig() { const data = read(); return clone({ providers: configuredProviders(data), times: data.times }); },
   async getPublicBoard() {const data=publicBoardData(read());return {...data,revision:await publicBoardVersion(data)};},
@@ -358,7 +361,7 @@ export const api = {
     return clone({ requests: data.requests, history: newestHistory(data.history), providers: configuredProviders(data), config: { providers: configuredProviders(data), times: data.times } });
   },
   async resetDemo() {
-    const reset = () => write(initialData());
+    const reset = () => {write(initialData());resetMockMaterials();};
     if (globalThis.navigator?.locks) await navigator.locks.request(STORAGE_KEY, reset);
     else await reset();
     applyPublicConfig(await api.getConfig());

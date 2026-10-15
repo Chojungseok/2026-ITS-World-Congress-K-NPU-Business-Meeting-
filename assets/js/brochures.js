@@ -1,8 +1,7 @@
-// Static public assets only. Set available:true only after public release approval
-// and placing the exact, unmodified PDF at this path. No runtime probes or preloads.
-export const BROCHURES = Object.freeze([
-  { providerId: 'deepx', name: 'DEEPX', file: 'deepx-company-profile-2026.pdf', available: true },
-  { providerId: 'mobilint', name: 'MOBILINT', file: 'mobilint-corp-brochure-2026.pdf', available: true },
-  { providerId: 'furiosa', name: 'FURIOSA AI', file: 'furiosa-sales-pitch-2026-kor.pdf', available: true },
-  { providerId: 'rebellions', name: 'REBELLIONS', file: 'rebellions-company-profile-2026-kr.pdf', available: true }
-]);
+// Compatibility facade for existing brochure screens. Registration lives in one catalog.
+import { MATERIAL_CATALOG } from './material-catalog.js';
+import { materialAvailable } from './materials.js';
+export const BROCHURES = Object.freeze(MATERIAL_CATALOG.materials.filter(m => m.materialType === 'brochure' && m.companyType === 'NPU').map(m => ({
+  providerId:m.companyId, name:MATERIAL_CATALOG.companies.find(c=>c.companyId===m.companyId).english,
+  file:m.filePath?.split('/').at(-1) || '', available:materialAvailable(m), materialId:m.materialId
+})));

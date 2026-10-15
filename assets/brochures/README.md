@@ -13,6 +13,6 @@
 
 제공된 원본은 [DEEPX] Company Profile_20260727_01.pdf, [모빌린트] Corp_Brochure_2026.pdf, [퓨리오사] Sales_Pitch_2026_General_KOR.pdf, [리벨리온] 회사 소개서KR ver_260710(ATOM-MAX, Rebel100™ 포함).pdf입니다. 파일명만 정리했고 내용은 그대로입니다. 향후 교체 자료도 공개 승인을 확인한 뒤 내용 변경 없이 배치하세요.
 
-현재 assets/js/brochures.js의 네 기업 available은 true이며 자료 보기 링크가 활성화되어 있습니다. 향후 배치 후에도 해당 기업의 available만 true로 설정하세요. 배치하지 않은 기업은 false로 두어 준비 중으로 표시합니다. 운영 전 실제 /assets/brochures/... PDF 링크를 Chrome/Edge에서 클릭하여 원본/새 탭/파일명과 대소문자를 확인하세요.
+현재 assets/js/material-catalog.js의 네 기업 브로셔 available은 true이며 자료 보기 링크가 활성화되어 있습니다. 향후 공개 승인된 실제 파일을 배치한 뒤 material-catalog.js의 filePath/available/publicApproved를 설정하고 npm run sync-assets로 서버 목록도 생성하세요. 배치하지 않은 기업은 false로 두어 준비 중으로 표시합니다. 운영 전 실제 /assets/brochures/... PDF 링크를 Chrome/Edge에서 클릭하여 원본/새 탭/파일명과 대소문자를 확인하세요.
 
-메인/신청/소개자료 화면은 PDF를 preload/import/iframe/base64로 읽지 않습니다. 링크 클릭 시에만 선택한 파일을 직접 요청합니다. GAS/Sheets 접근이 없습니다. 로컬 서버는 PDF를 application/pdf로 제공합니다.
+메인/신청/소개자료 화면은 PDF를 preload/import/iframe/base64로 읽지 않습니다. 링크 클릭 시에만 선택한 파일을 직접 요청합니다. 초기 화면은 GAS/Sheets 접근이 없습니다. V4부터 자료 버튼 클릭 시에는 별도 자료열람이력 API로 익명 클릭 기록을 전송합니다. 발표자료와 브로셔는 다른 자료 ID로 집계합니다. 로컬 서버는 PDF를 application/pdf로 제공합니다.

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs",
-    "sync-assets": "node scripts/sync-assets.mjs"
+    "sync-assets": "node scripts/sync-assets.mjs",
+    "sync-materials": "node scripts/sync-materials.mjs"
   }
 }

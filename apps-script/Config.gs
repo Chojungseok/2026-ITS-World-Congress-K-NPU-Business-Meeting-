@@ -13,6 +13,11 @@ var KN = {
   sessionMs: 30 * 60 * 1000,
   publicConfigTtlSeconds: 30,
   schemas: {
+    materialViews: {
+  name: '자료열람이력',
+  headers: ['이벤트ID','열람일시','자료ID','기업ID','기업명','기업구분','자료구분','자료제목','방문세션해시','클릭ID'],
+  keys: ['id','occurredAt','materialId','companyId','companyName','companyType','materialType','title','sessionHash','clickId']
+},
     requests: { name: '상담신청',
       headers: ['신청ID','신청일시','ITS기업명','담당자명','연락처','이메일','NPU기업ID','NPU기업명','상담시간','참석인원','상담내용','상태','개인정보동의','개인정보동의시각','개인정보안내문버전','최종수정일시','거절사유'],
       keys: ['id','createdAt','itsCompany','contactName','phone','email','providerId','providerName','time','attendees','details','status','privacyConsent','privacyConsentedAt','privacyNoticeVersion','updatedAt','rejectionReason'] },

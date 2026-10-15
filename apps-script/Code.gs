@@ -25,7 +25,7 @@ function handle_(method, input) {
       fail_('API_VERSION_MISMATCH','새 버전이 배포되었습니다. 페이지를 새로고침해 주세요.');
     if (method === 'GET' && !['getConfig','getAvailability','getAvailabilityRevision','getPublicBoard','getPublicBoardRevision'].includes(input.action))
       fail_('METHOD_NOT_ALLOWED','요청 형식을 확인할 수 없습니다. 페이지를 새로고침해 주세요.');
-    var lockedActions = ['submitRequest','cancelRequest','decideRequest','updateProviderCapacity','logout','findRequest','findRequestIds','extendSchedule','shrinkSchedule'];
+    var lockedActions = ['submitRequest','cancelRequest','decideRequest','updateProviderCapacity','logout','findRequest','findRequestIds','extendSchedule','shrinkSchedule','logMaterialView'];
     var data = lockedActions.includes(input.action) ? withLock_(function(){return dispatch_(input);}) : dispatch_(input);
     return data == null ? null : data;
   });
@@ -63,6 +63,8 @@ function dispatch_(input) {
   // Explicit allowlist: never dynamically call a function named by a client.
   switch (input.action) {
     case 'getConfig': return publicConfig_();
+    case 'logMaterialView': return logMaterialView_(input);
+    case 'getMaterialStatistics': return materialStatistics_(input);
     case 'getPublicBoard': return publicBoard_();
     case 'getPublicBoardRevision': return revision_('board');
     case 'getProviderRevision':

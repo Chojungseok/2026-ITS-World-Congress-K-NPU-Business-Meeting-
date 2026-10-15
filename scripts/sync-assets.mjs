@@ -1,3 +1,4 @@
+import './sync-materials.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -16,6 +17,8 @@ html=html.replace(/src="\.\/assets\/js\/bootstrap\.js[^"]*"/,'src="./assets/js/b
 // Import maps version the entire transitive graph, without changing Node imports.
 // Only the measured common app is preloaded; no route-specific/PDF/image preloads.
 html=html.replace(/\s*<link rel="modulepreload"[^>]*>/g,'');
+html=html.replace(/\s*<link rel="stylesheet"[^>]*materials\.css[^>]*>/g,'');
+html=html.replace('  <script type="importmap"','  <link rel="stylesheet" href="./assets/css/materials.css?v='+BUILD_VERSION+'">\n  <script type="importmap"');
 if(PRELOAD_APP || process.argv.includes('--preload'))html=html.replace('  <script defer','  <link rel="modulepreload" href="./assets/js/app.js?v='+BUILD_VERSION+'">\n  <script defer');
 if(process.argv.includes('--check')) {if(html!==read('index.html').replace(/\r\n/g,'\n'))throw Error('Run npm run sync-assets after changing BUILD_VERSION or JS files.');}
 else fs.writeFileSync(path.join(root,'index.html'),html);
