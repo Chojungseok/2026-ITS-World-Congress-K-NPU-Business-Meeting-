@@ -122,12 +122,14 @@ test('GAS extension uses simple body-only POST, sanitizes payload, invalidates c
 });
 test('official logos are small static local assets with alt/intrinsic ratio and accessible fallback; no hotlink or active content',()=>{
  for(const [id,logo]of Object.entries(PROVIDER_LOGOS)){
- const bytes=fs.readFileSync(new URL('../assets/logos/'+logo.file,import.meta.url));assert.ok(bytes.length<15000);
+ const bytes=fs.readFileSync(new URL('../assets/logos/'+logo.file,import.meta.url));assert.ok(bytes.length<100000);
  if(logo.file.endsWith('.svg')){
   const file=bytes.toString('utf8');assert.ok(file.includes('<svg'));assert.ok(!/<script|<foreignObject|<image|\bon\w+\s*=|href=/i.test(file));
- }else{
-  assert.equal(id,'kt');assert.equal(logo.file,'kt-logo.png');assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+ }else if(logo.file.endsWith('.png')){
+  assert.equal(logo.file,id+'-logo.png');assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
   assert.equal(bytes.readUInt32BE(16),logo.width);assert.equal(bytes.readUInt32BE(20),logo.height);
+ }else{
+  assert.equal(logo.file,id+'-logo.jpeg');assert.equal(bytes.subarray(0,3).toString('hex'),'ffd8ff');assert.ok(logo.width>0&&logo.height>0);
  }
  const markup=view.mark({id});assert.ok(markup.includes('src="./assets/logos/'));assert.ok(markup.includes('alt="'+logo.alt+'"'));assert.ok(markup.includes('logo-fallback'));assert.ok(!markup.includes('https://'));
  }

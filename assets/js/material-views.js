@@ -28,7 +28,7 @@ export function materialCompanyCards(type, catalog=MATERIAL_CATALOG) {
   return '<div class="materials-grid">'+companies.map(company=>{
     const presentation=catalog.materials.find(m=>m.companyId===company.companyId && m.materialType==='presentation');
     const brochure=catalog.materials.find(m=>m.companyId===company.companyId && m.materialType==='brochure');
-    const brand=type==='NPU'?mark({id:company.companyId,name:company.name,english:company.english}):'<span class="material-company-label">'+(type==='DEEPDIVE'?'DEEP DIVE':'ITS COMPANY')+'</span>';
+    const brand=mark({id:company.companyId,name:company.name,english:company.english});
     return `<article class="panel material-company" data-material-company="${e(company.companyId)}"><div class="material-company-head">${brand}<h3>${e(company.name)}</h3></div>${materialButton(presentation,'presentation')}${brochure?materialButton(brochure,'brochure'):''}</article>`;
   }).join('')+'</div>';
 }
