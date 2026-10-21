@@ -10,3 +10,12 @@
 |rebellions|rebellions-logo.svg|[공식 파일/페이지](https://kr.rebellions.ai/wp-content/uploads/2025/08/logo-light-bg.svg)|93acba84149cfd7c0d6508683b05282b76dfe18d5c4683e3f09cf153982611e5|
 
 모든 파일은 GitHub Pages의 정적 파일로 제공하며 외부 URL hotlink는 사용하지 않습니다. 초기 화면 밖 로고는 lazy loading, 표시 크기는 CSS로 제한합니다. 공개 행사에서의 CI 사용 조건은 각 기업의 브랜드 지침을 운영자가 확인하세요.
+
+## KT 자료실 CI 추가 (2026-10-21)
+
+KT 공식 CI 소개 페이지에서 제공하는 PNG 원본을 `kt-logo.png`로 보관했습니다. 원본의 색상과 비율을 변경하지 않았습니다.
+
+- 공식 소개: https://corp.kt.com/html/intro/design/ci.html
+- 원본 이미지: https://corp.kt.com/images/kt/kt-ci.png?ver=2022120801
+- 원본 크기: 200 × 164, 7,365 bytes
+- SHA-256: `6c25d0205f5a395d94c5f4b339d2c1edac2b1ebd3b2b437cf35628a785024e04`
