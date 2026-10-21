@@ -5,7 +5,7 @@ function validateMaterialCatalog_(catalog) {
     fail_('MATERIAL_SETUP_REQUIRED','자료 등록정보를 동기화해 주세요.');
   var companies={},ids={},presentations={};
   catalog.companies.forEach(function(c){
-    if(!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(c.companyId) || !['NPU','ITS'].includes(c.companyType) || typeof c.name!=='string' || !c.name.trim() || c.name.length>80 || companies[c.companyId])
+    if(!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(c.companyId) || !['NPU','ITS','DEEPDIVE'].includes(c.companyType) || typeof c.name!=='string' || !c.name.trim() || c.name.length>80 || companies[c.companyId])
       fail_('MATERIAL_SETUP_REQUIRED','자료 기업 설정을 확인해 주세요.');
     companies[c.companyId]=c;
   });

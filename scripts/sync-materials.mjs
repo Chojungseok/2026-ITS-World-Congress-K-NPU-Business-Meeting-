@@ -7,7 +7,7 @@ export function validateCatalog(value, {verifyFile} = {}) {
   if(!value || typeof value.version !== 'string' || !Array.isArray(value.companies) || !Array.isArray(value.materials)) throw Error('Invalid material catalog');
   const companies=new Map(), ids=new Set(), presentation=new Set();
   for(const c of value.companies) {
-    if(!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(c.companyId) || !['NPU','ITS'].includes(c.companyType) || typeof c.name!=='string' || !c.name.trim() || c.name.length>80 || companies.has(c.companyId))throw Error('Invalid/duplicate company');
+    if(!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(c.companyId) || !['NPU','ITS','DEEPDIVE'].includes(c.companyType) || typeof c.name!=='string' || !c.name.trim() || c.name.length>80 || companies.has(c.companyId))throw Error('Invalid/duplicate company');
     companies.set(c.companyId,c);
   }
   for(const m of value.materials) {

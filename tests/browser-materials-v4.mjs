@@ -16,7 +16,7 @@ async function client(hash,{mock=false,width=1440,catalog}={}) {
  ctx.on('request',r=>{if(/\.pdf(?:$|\?)/.test(r.url()))pdfs.push(r.url());});
  if(catalog)await ctx.route('**/assets/js/material-catalog.js*',r=>r.fulfill({contentType:'text/javascript',body:'export const MATERIAL_CATALOG='+JSON.stringify(catalog)+';'}));
  // Verify the existing PDF target without exercising an installed PDF viewer.
- await ctx.route('**/assets/brochures/*.pdf',r=>r.fulfill({status:204}));
+ await ctx.route(/\/assets\/(?:brochures|materials)\/.*\.pdf(?:\?.*)?$/,r=>r.fulfill({status:204}));
  if(!mock){
   await ctx.route('**/assets/js/runtime-config.js*',r=>r.fulfill({contentType:'text/javascript',body:'export const RUNTIME_CONFIG={backend:"gas",gasUrl:'+JSON.stringify(url)+',refreshIntervalMs:30000,revisionPolling:{providerMs:5000,adminMs:10000,availabilityMs:5000,retryMs:30000}};export function resolveBackend(){return "gas";}'}));
   await ctx.route(url+'**',async r=>{
@@ -34,9 +34,9 @@ async function login(c,mock=false){
  await c.p.locator('[name="id"]').fill(mock?'ITSKOREA9911':h.admin.id);await c.p.locator('[name="password"]').fill(mock?'ITSKOREA9911!':h.admin.password);
  await c.p.locator('#admin-login-form button[type="submit"]').click();await c.p.locator('#material-analytics').waitFor();await ready(c.p);
 }
-async function openPdf(c,index=0){
+async function openPdf(c,materialId='NPU-DEEPX-BROCHURE'){
  const seen=c.ctx.waitForEvent('request',r=>/\.pdf$/.test(r.url()));
- await c.p.locator('#main [data-material-id]').nth(index).click();await seen;
+ await c.p.locator('#main [data-material-id="'+materialId+'"]').click();await seen;
  if(!c.control.fail && c.calls.some(x=>x.input.action==='logMaterialView'))await c.p.waitForTimeout(80);
  for(const p of c.ctx.pages())if(p!==c.p)await p.close();
 }
@@ -47,17 +47,26 @@ try{
  assert.equal(await c.p.locator('.role-choice').count(),2);assert.equal(await c.p.locator('.welcome-admin').count(),0);
  await c.p.locator('.its-choice').click();await c.p.locator('#application-form').waitFor();await ready(c.p);
  assert.equal(await c.p.locator('#sidebar [data-route="npu"]').isVisible(),false);report.originalBusinessEntry=true;
- await go(c,'materials');assert.equal(await c.p.locator('[data-material-company]').count(),4);
- assert.match(await c.p.locator('#materials-its').innerText(),/발표자료 준비 중/);assert.equal(await c.p.locator('.material-resource.pending button[disabled]').count(),4);
- assert.equal(await c.p.locator('#sidebar [data-route="admin"]').isVisible(),false);
- const count=c.calls.length;await c.p.locator('.material-resource.pending button').evaluateAll(nodes=>nodes.forEach(n=>n.click()));assert.equal(c.calls.length,count);assert.equal(c.pdfs.length,0);
- await c.p.locator('[data-material-jump="materials-npu"]').click();assert.equal(new URL(c.p.url()).hash,'#materials');
- report.pending={noPdfRequests:true,noClickLogs:true,itsEmpty:true};
+ const materialEntryCalls=c.calls.length;await go(c,'materials');assert.equal(c.calls.length,materialEntryCalls);
+ assert.equal(await c.p.locator('[data-material-company]').count(),11);assert.equal(await c.p.locator('#main [data-material-id]').count(),15);
+ for(const [group,count]of [['its',4],['npu',5],['deepdive',2]]){
+  assert.equal(await c.p.locator('#materials-'+group+' [data-material-company]').count(),count);
+  await c.p.locator('[data-material-jump="materials-'+group+'"]').click();assert.equal(new URL(c.p.url()).hash,'#materials');
+ }
+ assert.equal(await c.p.locator('.material-resource.pending button[disabled][aria-label="발표자료 준비 중"]').count(),0);
+ assert.equal(await c.p.locator('#sidebar [data-route="admin"]').isVisible(),false);assert.equal(c.pdfs.length,0);
+ report.registered={companies:11,presentations:11,brochures:4,groups:['ITS','NPU','DEEPDIVE'],noInitialPdfRequests:true};
+ const pendingCatalog=structuredClone(MATERIAL_CATALOG),pendingMaterial=pendingCatalog.materials.find(m=>m.materialId==='NPU-DEEPX-PITCH');
+ Object.assign(pendingMaterial,{filePath:null,available:false,publicApproved:false});
+ const pending=await client('materials',{catalog:pendingCatalog});
+ assert.equal(await pending.p.locator('.material-resource.pending button[disabled][aria-label="발표자료 준비 중"]').count(),1);
+ await pending.p.locator('.material-resource.pending button').evaluateAll(nodes=>nodes.forEach(n=>n.click()));
+ assert.equal(pending.calls.length,0);assert.equal(pending.pdfs.length,0);report.pendingFixture={noPdfRequests:true,noClickLogs:true};
  const admin=await client('admin');await login(admin);assert.equal(admin.calls.some(x=>x.input.action==='getMaterialStatistics'),false);
  await admin.p.locator('#refresh-material-stats').click();await admin.p.getByText('아직 자료 열람 기록이 없습니다',{exact:true}).waitFor();report.emptyStats=true;
  await openPdf(c);await c.p.waitForFunction(()=>sessionStorage.getItem('knpu-material-visit-v1'));
  await admin.p.locator('#refresh-material-stats').click();await admin.p.waitForFunction(()=>document.querySelector('.material-metrics strong')?.textContent==='1');
- const second=await client('materials',{width:390});await openPdf(second,1);
+ const second=await client('materials',{width:390});await openPdf(second,'NPU-MOBILINT-BROCHURE');
  await admin.p.locator('#refresh-material-stats').click();await admin.p.waitForFunction(()=>document.querySelector('.material-metrics strong')?.textContent==='2');
  assert.equal(await admin.p.locator('.material-metrics strong').nth(1).innerText(),'2');
  assert.equal(await c.p.evaluate(()=>Object.keys(localStorage).length),0);
@@ -68,6 +77,11 @@ try{
  await admin.p.locator('#material-stats-filters [name="materialType"]').selectOption('presentation');
  await admin.p.locator('#material-stats-filters button[type="submit"]').click();await admin.p.waitForFunction(()=>document.querySelector('.material-metrics strong')?.textContent==='0');
  assert.equal(await admin.p.locator('#material-stats-results tbody tr').first().locator('td').nth(2).innerText(),'발표자료');report.filters=true;
+ await admin.p.locator('#material-stats-filters [name="companyType"]').selectOption('DEEPDIVE');
+ await admin.p.locator('#material-stats-filters button[type="submit"]').click();await admin.p.waitForFunction(()=>document.querySelector('.material-metrics strong')?.textContent==='0');
+ await openPdf(c,'DEEPDIVE-RAONROAD-PITCH');await admin.p.locator('#refresh-material-stats').click();
+ await admin.p.waitForFunction(()=>document.querySelector('.material-metrics strong')?.textContent==='1');
+ assert.match(await admin.p.locator('#material-stats-results').innerText(),/라온로드/);report.deepDivePresentationStats=true;
  const synthetic=structuredClone(MATERIAL_CATALOG);synthetic.companies.push({companyId:'mock-its',companyType:'ITS',name:'검증용 ITS (mock)'});
  synthetic.materials.push({materialId:'ITS-MOCK-PITCH',companyId:'mock-its',companyType:'ITS',materialType:'presentation',title:'mock 발표자료',filePath:null,available:false,publicApproved:false});
  const future=await client('materials',{catalog:synthetic});assert.equal(await future.p.locator('[data-material-company="mock-its"]').count(),1);assert.equal(future.pdfs.length,0);assert.equal(future.calls.length,0);report.futureIts=true;
